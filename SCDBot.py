@@ -332,7 +332,7 @@ def file_update(player_dict):
 # Dice roller
 # =========================================================
 
-@bot.command(help="Dice roller.  Expected format: NdN+N.(Ex: 2d6+2")
+@bot.command(help="Dice roller.  Expected format: NdN+N.(Ex: 2d6+2)")
 async def roll(ctx, *, dice_roll: str):
     modifier_pattern = "[0-9]+d[0-9]+\\+[0-9]+"
     normal_pattern = "[0-9]+d[0-9]+"
