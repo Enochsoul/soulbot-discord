@@ -45,7 +45,7 @@ async def on_message_error(ctx, error):
 # Initiative Tracker
 # =========================================================
 
-init_dict = {"t1": 13, "t2": 22, "t3": 15, "t4": 11}
+init_dict = {}
 init_tracker = []
 init_active = False
 init_turn = 0
