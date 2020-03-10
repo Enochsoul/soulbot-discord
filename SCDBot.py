@@ -3,7 +3,6 @@ import os
 import random
 import re
 import discord
-from character_functions import *
 from discord.ext import commands
 from dotenv import load_dotenv
 from tabulate import tabulate
@@ -14,7 +13,7 @@ token = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
 client = discord.Client()
 
-with open("prefixes.json") as f:
+with open('prefixes.json') as f:
     prefixes = json.load(f)
 default_prefix = "!"
 
@@ -40,69 +39,6 @@ async def setprefix(ctx, prefix: str):
 async def on_message_error(ctx, error):
     if isinstance(error, commands.MissingPermissions):
         await ctx.send(f"{error}")
-
-
-# =========================================================
-# Character commands
-# =========================================================
-
-json_file = open('characters.json')
-char_db = json.load(json_file)
-json_file.close()
-
-
-@bot.group(name="char", help='Submit/view characters in the database.')
-async def character(ctx):
-    if ctx.invoked_subcommand is None:
-        await ctx.send(f"{ctx.author.mention} You're missing a required argument.")
-
-
-@character.command(help="List all characters in the database.")
-async def list(ctx):
-    clist = '\n'.join(list_chars(char_db))
-    embed = discord.Embed(color=0xff0000)
-    embed.add_field(name="Character List:", value=clist)
-    await ctx.send(embed=embed)
-
-
-@character.command(
-    help="Display character data by section: Basic, Health, Stats, Combat, Feats, Powers, Talents, and Equipment.")
-async def show(ctx, char_name: str, section: str):
-    if char_name.capitalize() in list_chars(char_db):
-        index = list_chars(char_db).index(char_name.capitalize())
-        if section.capitalize() == "Basic":
-            char_data = char_basics(index, char_db)
-            embed = discord.Embed(title=f"{char_name.capitalize()} Basics:", description=char_data, color=0xff0000)
-            await ctx.send(embed=embed)
-        elif section.capitalize() == "Stats":
-            char_data = "```" + char_abilities(index, char_db) + "```"
-            embed = discord.Embed(title=f"{char_name.capitalize()} Abilities:", description=char_data, color=0xff0000)
-            await ctx.send(embed=embed)
-        elif section.capitalize() == "Health":
-            char_hp = f'{char_db["Characters"][index]["Health"]["HP"]["Current"]} / {char_db["Characters"][index]["Health"]["HP"]["Max"]}'
-            char_recovery = f'{char_db["Characters"][index]["Health"]["Recoveries"]["Current"]} / {char_db["Characters"][index]["Health"]["Recoveries"]["Max"]}'
-            char_recovery_roll = f'{char_db["Characters"][index]["Health"]["Recovery Roll"]}'
-            embed = discord.Embed(title="Character Health:", color=0xff0000)
-            embed.add_field(name="HP", value=char_hp)
-            embed.add_field(name="Recoveries", value=char_recovery)
-            embed.add_field(name="Recovery Roll", value=char_recovery_roll)
-            await ctx.send(embed=embed)
-    else:
-        await ctx.send(f'Character {char_name.capitalize()} not found.  Try "{command_prefix}char list"')
-
-
-@character.error
-async def on_command_error(ctx, error):
-    if isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send(f"{ctx.author.mention} You're missing a required argument.")
-
-
-@show.error
-async def on_command_error(ctx, error):
-    if isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send(f"{ctx.author.mention} You're missing a required argument.\n"
-                       "Please provide a character name and a valid section of the sheet to display: Basic, Health, "
-                       "Stats, Combat, Feats, Powers, Talents, Equipment.")
 
 
 # =========================================================
@@ -140,6 +76,7 @@ async def reset(ctx):
 
 @init.command(help="Rolls your initiative plus the supplied bonus and adds you to the order.")
 async def roll(ctx, init_bonus: int):
+    print('Rolling')
     global init_active
     global init_dict
     if init_active is True:
