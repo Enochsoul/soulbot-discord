@@ -76,7 +76,6 @@ async def reset(ctx):
 
 @init.command(help="Rolls your initiative plus the supplied bonus and adds you to the order.")
 async def roll(ctx, init_bonus: int):
-    print('Rolling')
     global init_active
     global init_dict
     if init_active is True:
