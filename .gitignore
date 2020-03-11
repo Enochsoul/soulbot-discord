@@ -11,5 +11,6 @@ dist/
 build/
 .egg-ingo
 .idea/
+
+data/*
 !data/.gitkeep
-data/
