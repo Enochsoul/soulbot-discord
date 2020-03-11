@@ -8,7 +8,9 @@ Install:
 2) create .env with your Discord bot token and default command prefix:
 
 EG:
+  
   #.env
+  
   DISCORD_TOKEN=(put your token here)
   
   COMMAND_PREFIX=!
