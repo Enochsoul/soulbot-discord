@@ -6,10 +6,12 @@ Still a work in progress, requires a .env file with your discord bot token.  Rig
 Install:
 1) git clone to your chosen location
 2) create .env with your Discord bot token and default command prefix:
-  EG:
+
+EG:
   #.env
   DISCORD_TOKEN=<put your token here>
   COMMAND_PREFIX=!
+
 3) Build environment from the requirements.txt(Virtual or system, your call.)
 4) Run the bot script.
   
