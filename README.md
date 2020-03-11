@@ -18,7 +18,7 @@ EG:
   
   
 ### Current Features:
--XP Tracking
--13th Age style initiative tracking, should also work for DnD 4e.
--Dice Roller(In the format of NdN+N with highlighting of natural max rolls.  No rerolls or dice popping)
+- XP Tracking
+- 13th Age style initiative tracking, should also work for DnD 4e.
+- Dice Roller(In the format of NdN+N with highlighting of natural max rolls.  No rerolls or dice popping)
 
