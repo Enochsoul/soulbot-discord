@@ -9,7 +9,8 @@ Install:
 
 EG:
   #.env
-  DISCORD_TOKEN=<put your token here>
+  DISCORD_TOKEN=(put your token here)
+  
   COMMAND_PREFIX=!
 
 3) Build environment from the requirements.txt(Virtual or system, your call.)
