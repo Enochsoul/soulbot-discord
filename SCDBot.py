@@ -210,6 +210,21 @@ async def delay(ctx, npc_name: str, new_init: int):
             f"Initiative for {npc_name} has been delayed to {init_dict[npc_name]}.")
 
 
+@dm.command(help="Allows DM to remove someone(player or NPC) from the initiative order.")
+async def remove(ctx, name: str):
+    global init_active
+    global init_tracker
+    global init_dict
+    if name not in init_dict:
+        await ctx.send(f"{name} is not in the initiative order.")
+    else:
+        del init_dict[name]
+        init_tracker = init_table(init_dict)
+        init_tracker[init_turn - (multiplier * len(init_tracker))][0] = "--->"
+        await ctx.send(
+            f"{name} has been removed from the initiative table.")
+
+
 def init_table(init_dictionary):
     table = []
     init_sorted = {k: v for k, v in sorted(init_dictionary.items(), key=lambda item: item[1], reverse=True)}
