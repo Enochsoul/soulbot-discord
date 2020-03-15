@@ -10,17 +10,9 @@ from tabulate import tabulate
 load_dotenv()
 
 token = os.getenv('DISCORD_TOKEN')
+command_prefix = os.getenv('COMMAND_PREFIX')
+
 client = discord.Client()
-
-with open('prefixes.json') as f:
-    prefixes = json.load(f)
-default_prefix = "!"
-
-
-def command_prefix(bot, message):
-    guild_id = str(message.guild.id)
-    return prefixes.get(guild_id, default_prefix)
-
 
 bot = commands.Bot(command_prefix=command_prefix)
 
@@ -28,9 +20,7 @@ bot = commands.Bot(command_prefix=command_prefix)
 @bot.command(help="Changes the bot command prefix.  Default=!")
 @commands.has_guild_permissions(manage_guild=True)
 async def setprefix(ctx, prefix: str):
-    prefixes.update({str(ctx.guild.id): prefix})
-    with open("prefixes.json", "+w") as p:
-        json.dump(prefixes, p)
+    set_key('.env', 'COMMAND_PREFIX', prefix)
     await ctx.send(f"Prefix now set to {prefix}.")
 
 
