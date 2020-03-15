@@ -10,7 +10,6 @@ from tabulate import tabulate
 load_dotenv()
 
 token = os.getenv('DISCORD_TOKEN')
-GUILD = os.getenv('DISCORD_GUILD')
 client = discord.Client()
 
 with open('prefixes.json') as f:
@@ -334,17 +333,26 @@ def file_update(player_dict):
 
 @bot.command(help="Dice roller.  Expected format: NdN+N.(Ex: 2d6+2)")
 async def roll(ctx, *, dice_roll: str):
-    modifier_pattern = "[0-9]+d[0-9]+\\+[0-9]+"
+    plus_modifier_pattern = "[0-9]+d[0-9]+\\+[0-9]+"
+    minus_modifier_pattern = "[0-9]+d[0-9]+\\-[0-9]+"
     normal_pattern = "[0-9]+d[0-9]+"
-    match_with_modifier = bool(re.fullmatch(modifier_pattern, dice_roll))
+    plus_match_with_modifier = bool(re.fullmatch(plus_modifier_pattern, dice_roll))
+    minus_match_with_modifier = bool(re.fullmatch(minus_modifier_pattern, dice_roll))
     match_without_modifier = bool(re.fullmatch(normal_pattern, dice_roll))
-    if match_with_modifier:
+    if plus_match_with_modifier:
         modifier = int(dice_roll.split("+")[1])
         dice = dice_roll.split("+")[0]
         result = die_roll(int(dice.split("d")[0]), int(dice.split("d")[1]))
         result_total = result[1]
         result_list = result[0]
         await ctx.send(f"{ctx.author.mention} rolled **{result_total + modifier}**. ({result_list}+{modifier})")
+    elif minus_match_with_modifier:
+        modifier = int(dice_roll.split("-")[1])
+        dice = dice_roll.split("-")[0]
+        result = die_roll(int(dice.split("d")[0]), int(dice.split("d")[1]))
+        result_total = result[1]
+        result_list = result[0]
+        await ctx.send(f"{ctx.author.mention} rolled **{result_total - modifier}**. ({result_list}-{modifier})")
     elif match_without_modifier:
         dice = dice_roll.split("+")[0]
         result = die_roll(int(dice.split("d")[0]), int(dice.split("d")[1]))
