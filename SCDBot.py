@@ -87,8 +87,6 @@ async def start(ctx):
     global init_dict
     global init_turn
     global init_tracker
-    global multiplier
-    global escalation
     if len(init_dict) == 0:
         await ctx.send(f"Please use **{ctx.prefix}init roll** to add to the order first.")
     elif init_active is True:
@@ -103,11 +101,8 @@ async def start(ctx):
 
 @init.command(help="Shows current turn order, rolls and tracker status.")
 async def show(ctx):
-    global init_turn
     global init_active
     global init_tracker
-    global multiplier
-    global escalation
     if init_active is False:
         init_tracker = init_table(init_dict)
         embed = init_embed_template(init_tracker)
