@@ -199,15 +199,12 @@ async def delay(ctx, npc_name: str, new_init: int):
         await ctx.send(f"Tracker not active, use **{ctx.prefix}init start** to begin.")
     elif npc_name not in init_dict:
         await ctx.send(f"{npc_name} is not in the initiative order.")
-    elif new_init > init_dict[npc_name]:
-        await ctx.send(
-            f"New initiative({new_init}) must be lower than original({init_dict[npc_name]}).")
     else:
         init_dict[npc_name] = new_init
         init_tracker = init_table(init_dict)
         init_tracker[init_turn - (multiplier * len(init_tracker))][0] = "--->"
         await ctx.send(
-            f"Initiative for {npc_name} has been delayed to {init_dict[npc_name]}.")
+            f"Initiative for {npc_name} has been delayed to {init_dict[npc_name]}. ")
 
 
 @dm.command(help="Allows DM to remove someone(player or NPC) from the initiative order.")
@@ -222,6 +219,24 @@ async def remove(ctx, name: str):
         init_tracker = [x for x in init_tracker if x[1] != name]
         await ctx.send(
             f"{name} has been removed from the initiative table.")
+
+
+@dm.command(help='Allows DM to manually update an NPC or player\'s init score.  Specified name must be exact, '
+                 'use "" if name includes spaces.')
+async def update(ctx, name: str, new_init: int):
+    global init_dict
+    global init_tracker
+    if name not in init_dict:
+        await ctx.send(f"{name} is not in the initiative order.")
+    elif init_active is False:
+        init_dict[name] = new_init
+        init_tracker = init_table(init_dict)
+        await ctx.send(f"{name}'s initiative has been manually set to {new_init}.")
+    else:
+        init_dict[name] = new_init
+        init_tracker = [[x[0], x[1], new_init] if x[1] == name else x for x in init_tracker]
+        init_tracker.sort(key=lambda x: x[2], reverse=True)
+        await ctx.send(f"{name}'s initiative has been manually set to {new_init}.")
 
 
 def init_table(init_dictionary):
