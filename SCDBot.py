@@ -157,17 +157,24 @@ async def dm(ctx):
         await ctx.send(f"Additional arguments required, see **{ctx.prefix}help init dm** for available options.")
 
 
-@dm.command(help="Add NPCs/Monsters to the initiative order.")
-async def npc(ctx, npc_name: str, init_bonus: int):
+@dm.command(help="Add NPCs/Monsters to the initiative order, before or during active combat.")
+async def npc(ctx, npc_name: str, init_bonus: int = 0):
     global init_active
     global init_dict
+    global init_tracker
     if init_active is True:
-        await ctx.send("Initiative Tracker is locked in an active turn.")
+        initiative = die_roll(1, 20)[1]
+        init_dict[npc_name] = initiative + init_bonus
+        init_tracker.append(["    ", npc_name, initiative + init_bonus])
+        init_tracker.sort(key=lambda x: x[2], reverse=True)
+        await ctx.send(f"Adding {npc_name} to active combat round.\n"
+                       f"Initiative is ({initiative}+{init_bonus}) {init_dict[npc_name]}.")
     elif npc_name in init_dict:
-        await ctx.send(f"{npc_name} is already used in the initative order.")
+        await ctx.send(f"{npc_name} is already used in the initiative order.")
     else:
         initiative = die_roll(1, 20)[1]
         init_dict[npc_name] = initiative + init_bonus
+        init_tracker = init_table(init_dict)
         await ctx.send(f"{npc_name}'s Initiative is ({initiative}+{init_bonus}) {init_dict[npc_name]}.")
 
 
