@@ -225,10 +225,8 @@ async def remove(ctx, name: str):
 
 
 def init_table(init_dictionary):
-    table = []
     init_sorted = {k: v for k, v in sorted(init_dictionary.items(), key=lambda item: item[1], reverse=True)}
-    for k in init_sorted:
-        table.append(["    ", k, init_sorted[k]])
+    table = [["    ", k, init_sorted[k]] for k in init_sorted]
     return table
 
 
