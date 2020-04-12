@@ -146,7 +146,8 @@ async def delay(ctx, new_init: int):
         init_tracker = init_table(init_dict)
         init_tracker[init_turn - (multiplier * len(init_tracker))][0] = "--->"
         await ctx.send(
-            f"Initiative for {ctx.author.display_name} has been delayed to {init_dict[ctx.author.display_name]}.")
+            f"Initiative for {ctx.author.display_name} has been delayed to {init_dict[ctx.author.display_name]}."
+            f"Initiative order has been recalculated.")
 
 
 @init.group(help="Commands for the DM.")
