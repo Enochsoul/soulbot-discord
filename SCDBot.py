@@ -102,13 +102,8 @@ async def start(ctx):
 async def show(ctx):
     global init_active
     global init_tracker
-    if init_active is False:
-        init_tracker = init_table(init_dict)
-        embed = init_embed_template(init_tracker)
-        await ctx.send(embed=embed)
-    else:
-        embed = init_embed_template(init_tracker)
-        await ctx.send(embed=embed)
+    embed = init_embed_template(init_tracker)
+    await ctx.send(embed=embed)
 
 
 @init.command(help="Advances the initiative order.")
