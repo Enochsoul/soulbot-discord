@@ -75,6 +75,7 @@ async def roll(ctx, init_bonus: int = 0):
     else:
         initiative = die_roll(1, 20)[1]
         init_dict[ctx.author.display_name] = initiative + init_bonus
+        init_tracker = init_table(init_dict)
         await ctx.send(
             f"{ctx.author.display_name}'s Initiative is ({initiative}+{init_bonus}) {init_dict[ctx.author.display_name]}.")
 
@@ -215,8 +216,7 @@ async def remove(ctx, name: str):
         await ctx.send(f"{name} is not in the initiative order.")
     else:
         del init_dict[name]
-        init_tracker = init_table(init_dict)
-        init_tracker[init_turn - (multiplier * len(init_tracker))][0] = "--->"
+        init_tracker = [x for x in init_tracker if x[1] != name]
         await ctx.send(
             f"{name} has been removed from the initiative table.")
 
