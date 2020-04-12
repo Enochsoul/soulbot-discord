@@ -64,12 +64,10 @@ async def reset(ctx):
 
 
 @init.command(help="Rolls your initiative plus the supplied bonus and adds you to the order.")
-async def roll(ctx, init_bonus: int):
+async def roll(ctx, init_bonus: int = 0):
     global init_active
     global init_dict
-    if init_bonus is None:
-        await ctx.send(
-            f'Initiative roll should be in the format "{command_prefix}init roll <initiative bonus>", even if your bonus is 0.')
+    global init_tracker
     if init_active is True:
         await ctx.send("Initiative Tracker is locked in an active combat session.")
     elif ctx.author.display_name in init_dict:
