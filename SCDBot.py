@@ -77,7 +77,8 @@ async def roll(ctx, init_bonus: int = 0):
         init_dict[ctx.author.display_name] = initiative + init_bonus
         init_tracker = init_table(init_dict)
         await ctx.send(
-            f"{ctx.author.display_name}'s Initiative is ({initiative}+{init_bonus}) {init_dict[ctx.author.display_name]}.")
+            f"{ctx.author.display_name}'s Initiative is ({initiative}+{init_bonus})"
+            f" {init_dict[ctx.author.display_name]}.")
 
 
 @init.command(help="Starts the tracker and prevents any additions.")
