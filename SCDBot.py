@@ -365,14 +365,16 @@ async def roll(ctx, *, dice_roll: str):
         result = die_roll(int(dice.split("d")[0]), int(dice.split("d")[1]))
         result_total = result[1]
         result_list = result[0]
-        await ctx.send(f"{ctx.author.mention} rolled **{result_total + modifier}**. ({result_list}+{modifier})")
+        await ctx.send(f"{ctx.author.mention} rolled **{result_total + modifier}**."
+                       f" ({result_list}+{modifier})")
     elif minus_match_with_modifier:
         modifier = int(dice_roll.split("-")[1])
         dice = dice_roll.split("-")[0]
         result = die_roll(int(dice.split("d")[0]), int(dice.split("d")[1]))
         result_total = result[1]
         result_list = result[0]
-        await ctx.send(f"{ctx.author.mention} rolled **{result_total - modifier}**. ({result_list}-{modifier})")
+        await ctx.send(f"{ctx.author.mention} rolled **{result_total - modifier}**."
+                       f" ({result_list}-{modifier})")
     elif match_without_modifier:
         dice = dice_roll.split("+")[0]
         result = die_roll(int(dice.split("d")[0]), int(dice.split("d")[1]))
