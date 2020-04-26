@@ -147,7 +147,7 @@ async def delay(ctx, new_init: int):
         init_tracker = init_table(init_dict)
         init_tracker[init_turn - (multiplier * len(init_tracker))][0] = "--->"
         await ctx.send(
-            f"Initiative for {ctx.author.display_name} has been delayed to {init_dict[ctx.author.display_name]}."
+            f"Initiative for {ctx.author.display_name} has been delayed to {init_dict[ctx.author.display_name]}. "
             f"Initiative order has been recalculated.")
 
 
@@ -205,7 +205,8 @@ async def delay(ctx, npc_name: str, new_init: int):
         init_tracker = init_table(init_dict)
         init_tracker[init_turn - (multiplier * len(init_tracker))][0] = "--->"
         await ctx.send(
-            f"Initiative for {npc_name} has been delayed to {init_dict[npc_name]}. ")
+            f"Initiative for {npc_name} has been delayed to {init_dict[npc_name]}. "
+            f"Initiative order has been recalculated")
 
 
 @dm.command(help="Allows DM to remove someone(player or NPC) from the initiative order.")
@@ -213,6 +214,9 @@ async def remove(ctx, name: str):
     global init_active
     global init_tracker
     global init_dict
+    if "!" and "@" in name:
+        mention_user = name.replace("<", "").replace(">", "").replace("@", "").replace("!", "")
+        name = ctx.guild.get_member(int(mention_user)).display_name
     if name not in init_dict:
         await ctx.send(f"{name} is not in the initiative order.")
     else:
@@ -227,6 +231,9 @@ async def remove(ctx, name: str):
 async def update(ctx, name: str, new_init: int):
     global init_dict
     global init_tracker
+    if "!" and "@" in name:
+        mention_user = name.replace("<", "").replace(">", "").replace("@", "").replace("!", "")
+        name = ctx.guild.get_member(int(mention_user)).display_name
     if name not in init_dict:
         await ctx.send(f"{name} is not in the initiative order.")
     elif init_active is False:
