@@ -209,7 +209,9 @@ async def delay(ctx, npc_name: str, new_init: int):
             f"Initiative order has been recalculated")
 
 
-@dm.command(help="Allows DM to remove someone(player or NPC) from the initiative order.")
+@dm.command(help='Allows DM to remove someone(player or NPC) from the initiative order.  '
+                 'Specified name for NPCs is case sensitive, use "" around name if it includes spaces.  '
+                 'Players can be @ mentioned.')
 async def remove(ctx, name: str):
     global init_active
     global init_tracker
@@ -226,8 +228,9 @@ async def remove(ctx, name: str):
             f"{name} has been removed from the initiative table.")
 
 
-@dm.command(help='Allows DM to manually update an NPC or player\'s init score.  Specified name must be exact, '
-                 'use "" if name includes spaces.')
+@dm.command(help='Allows DM to manually update an NPC or player\'s init score.  '
+                 'Specified name for NPCs is case sensitive, use "" around the name if it includes spaces.  '
+                 'Players can be @ mentioned.')
 async def update(ctx, name: str, new_init: int):
     global init_dict
     global init_tracker
