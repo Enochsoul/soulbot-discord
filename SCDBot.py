@@ -399,7 +399,7 @@ async def roll(ctx, *, dice_roll: str):
 
 
 @bot.command(help="Roll 1d20+Your Bonus' to attack, command automatically includes escalation die.")
-async def attack(ctx, bonus: int):
+async def attack(ctx, bonus: int = 0):
     global escalation
     crit = ":x:"
     vuln_crit = ":x:"
