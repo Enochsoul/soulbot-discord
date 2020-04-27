@@ -398,6 +398,29 @@ async def roll(ctx, *, dice_roll: str):
         await ctx.send(f"Dice rolls should be in the format: NdN+N")
 
 
+@bot.command(help="Roll 1d20+Your Bonus' to attack, command automatically includes escalation die.")
+async def attack(ctx, bonus: int):
+    global escalation
+    crit = ":x:"
+    vuln_crit = ":x:"
+    attack_roll = die_roll(1, 20)
+    attack_natural = attack_roll[1]
+    attack_modified = attack_natural + bonus + escalation
+    if attack_natural == 20:
+        crit = ":white_check_mark:"
+    if attack_natural >= 18:
+        vuln_crit = ":white_check_mark:"
+    math = f"|| ({attack_natural} + {bonus} + {escalation} = {attack_modified}) ||"
+    attack_embed = discord.Embed(title="__**Attack Result**__",
+                                 description=f"{attack_modified}\n{math}",
+                                 color=0x0000ff)
+    attack_embed.add_field(name="Natural Roll", value=f"{attack_natural}", inline=False)
+    attack_embed.add_field(name="Natural Crit    ", value=f"{crit}", inline=True)
+    attack_embed.add_field(name="Element Crit", value=f"{vuln_crit}", inline=True)
+    attack_embed.add_field(name="Escalation", value=f"{escalation}", inline=True)
+    await ctx.send(embed=attack_embed)
+
+
 # =========================================================
 # Common Functions
 # =========================================================
