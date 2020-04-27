@@ -411,14 +411,14 @@ async def attack(ctx, bonus: int = 0):
     if attack_natural >= 18:
         vuln_crit = ":white_check_mark:"
     math = f"|| ({attack_natural} + {bonus} + {escalation} = {attack_modified}) ||"
-    attack_embed = discord.Embed(title="__**Attack Result**__",
+    attack_embed = discord.Embed(title=f"__**Attack Result**__",
                                  description=f"{attack_modified}\n{math}",
                                  color=0x0000ff)
     attack_embed.add_field(name="Natural Roll", value=f"{attack_natural}", inline=False)
     attack_embed.add_field(name="Natural Crit    ", value=f"{crit}", inline=True)
     attack_embed.add_field(name="Element Crit", value=f"{vuln_crit}", inline=True)
     attack_embed.add_field(name="Escalation", value=f"{escalation}", inline=True)
-    await ctx.send(embed=attack_embed)
+    await ctx.send(f"{ctx.author.mention} rolled to attack.", embed=attack_embed)
 
 
 # =========================================================
