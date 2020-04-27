@@ -55,11 +55,13 @@ async def reset(ctx):
     global init_active
     global init_tracker
     global multiplier
+    global escalation
     init_active = False
     init_tracker = []
     init_dict = {}
     init_turn = 0
     multiplier = 0
+    escalation = 0
     await ctx.send("Initiative Tracker is reset and active.")
 
 
