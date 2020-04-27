@@ -400,7 +400,8 @@ async def roll(ctx, *, dice_roll: str):
         await ctx.send(f"Dice rolls should be in the format: NdN+N")
 
 
-@bot.command(help="Roll 1d20+Your Bonus' to attack, command automatically includes escalation die. Default bonus = 0")
+@bot.command(help="Rolls 1d20 + supplied player bonus(Stat + Level) to attack, command automatically includes "
+                  "escalation die(if any). Default bonus = 0")
 async def attack(ctx, bonus: int = 0):
     global escalation
     crit = ":x:"
@@ -423,7 +424,7 @@ async def attack(ctx, bonus: int = 0):
     await ctx.send(f"{ctx.author.mention} rolled to attack.", embed=attack_embed)
 
 
-@bot.command(help="Roll 1d20+NPC Bonus to attack, command automatically includes escalation die. Default bonus = 0")
+@bot.command(help="Roll 1d20 + supplied NPC bonus to attack, excludes escalation die. Default bonus = 0")
 async def attacknpc(ctx, bonus: int = 0):
     crit = ":x:"
     vuln_crit = ":x:"
@@ -442,7 +443,7 @@ async def attacknpc(ctx, bonus: int = 0):
     attack_embed.add_field(name="Natural Crit", value=f"{crit}", inline=True)
     attack_embed.add_field(name="Element Crit", value=f"{vuln_crit}", inline=True)
     attack_embed.add_field(name="Escalation", value=f"{escalation}", inline=True)
-    await ctx.send(f"{ctx.author.mention} rolled to attack.", embed=attack_embed)
+    await ctx.send(f"{ctx.author.mention} rolled an **NPC attack**.", embed=attack_embed)
 
 
 # =========================================================
