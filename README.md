@@ -26,4 +26,5 @@ EG:
     - DM can remove any player or NPC from the initiative order.
     - DM commands on players can be referenced by Discord @ mention.
 - Dice Roller(In the format of NdN+N with highlighting of natural max rolls.  No rerolls or dice popping)
+- Attack dice roller, rolls 1d20 plus supplied player bonus.  Adds escalation dice automatically, and breaks out natural roll value.
 
