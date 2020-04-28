@@ -1,5 +1,5 @@
 # botsoul-discord
-Simple Discord bot for my RPG group.
+Simple Discord bot for my 13th Age RPG group.
 
 Still a work in progress, requires a .env file with your discord bot token.  Right now designed to run as a standalone bot for a single server.  If you invite it to multiple servers all settings will be shared.
 
@@ -18,8 +18,8 @@ EG:
 5) Create Discord Role called GM or DM, and assign to the user acting as the DM.  No special permissions required.  
   
 ### Current Features:
-- XP Tracking
-- 13th Age style initiative tracking, should also work for DnD 4e.
+- XP Tracking - I know it's not expressly used for 13th Age, but I wrote it before I realized and just left it in.
+- OGL/d20 style initiative tracking, should also work for DnD 4e.
     - Players can delay their initiative to a set number smaller than their current.
     - DM can create NPCs, add them at any time before or after combat starts.
     - DM can update any NPC or player's initiative to any value as needed.
