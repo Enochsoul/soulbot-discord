@@ -442,7 +442,7 @@ async def attacknpc(ctx, bonus: int = 0):
     attack_embed.add_field(name="Natural Roll", value=f"{attack_natural}", inline=False)
     attack_embed.add_field(name="Natural Crit", value=f"{crit}", inline=True)
     attack_embed.add_field(name="Element Crit", value=f"{vuln_crit}", inline=True)
-    attack_embed.add_field(name="Escalation", value=f"{escalation}", inline=True)
+    attack_embed.add_field(name="Escalation", value=f"N/A", inline=True)
     await ctx.send(f"{ctx.author.mention} rolled an **NPC attack**.", embed=attack_embed)
 
 
