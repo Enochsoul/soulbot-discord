@@ -16,3 +16,4 @@ data/*
 !data/.gitkeep
 
 .env
+.vscode/
