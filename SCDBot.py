@@ -282,84 +282,6 @@ async def on_command_error(ctx, error):
 
 
 # =========================================================
-# XP Tracker
-# =========================================================
-
-player_xp = {}
-
-
-@bot.group(help="DM tool to track XP for players.")
-async def xp(ctx):
-    if ctx.invoked_subcommand is None:
-        await ctx.send(f"Missing arguments, please see **{command_prefix}help xp** for usage.")
-
-
-@xp.command(help="Assigns XP to a player.  Use player name all to give to all players.")
-@commands.has_role("DM" or "GM")
-async def award(ctx, player: str, xp_award: int):
-    global player_xp
-    guild_id = str(ctx.guild.id)
-    if player == "all":
-        for k in player_xp[guild_id]:
-            player_xp[guild_id][k] += xp_award
-        await ctx.send(f"Gave all players {xp_award}XP.")
-    elif player.startswith("<@!"):
-        player_id = int(player.strip("<>@!"))
-        player_info = ctx.guild.get_member(player_id)
-        player_name = player_info.display_name
-        if player_name in player_xp[guild_id].keys():
-            player_xp[guild_id][player_name] += xp_award
-            await ctx.send(f"Gave {player_name} {xp_award}XP. Total XP: {player_xp[guild_id][player_name]}")
-        else:
-            player_xp[guild_id].update({player_name: xp_award})
-            await ctx.send(f"Gave {player_name} {xp_award}XP. Total XP: {player_xp[guild_id][player_name]}")
-    else:
-        ctx.send(f"Please @ mention players to award them XP.")
-    file_update(player_xp)
-
-
-@xp.command(help="Initializes new XP Tracker.")
-@commands.has_role("DM" or "GM")
-async def initialize(ctx):
-    keys = player_xp.keys()
-    guild_id = str(ctx.guild.id)
-    if guild_id not in keys:
-        player_xp[guild_id] = ""
-        file_update(player_xp)
-        await ctx.send(f"XP Tracker initialized for {ctx.guild.name}.")
-    else:
-        await ctx.send(f"XP Tracker already initialised.")
-
-
-@xp.command(help="Show XP tracker")
-async def show(ctx):
-    global player_xp
-    guild_id = str(ctx.guild.id)
-    embed = discord.Embed(title=f"XP Table:",
-                          description=f'```{tabulate(xp_table(player_xp, guild_id), headers=["Player", "XP"], tablefmt="fancy_grid")}```',
-                          color=0xff0000)
-    await ctx.send(embed=embed)
-
-
-@xp.error
-@award.error
-async def on_command_error(ctx, error):
-    if isinstance(error, (commands.MissingRole, commands.MissingRequiredArgument)):
-        await ctx.send(f"{error}")
-
-
-def xp_table(xp_list, guild_id):
-    table = [(k, v) for (k, v) in xp_list[guild_id].items() if v > 0]
-    return table
-
-
-def file_update(player_dict):
-    filename = "player_xp.json"
-    with open("./data/" + filename, "+w") as file:
-        json.dump(player_dict, file)
-
-
-# =========================================================
 # Dice roller
 # =========================================================
 
@@ -445,6 +367,11 @@ async def attacknpc(ctx, bonus: int = 0):
     attack_embed.add_field(name="Escalation", value=f"N/A", inline=True)
     await ctx.send(f"{ctx.author.mention} rolled an **NPC attack**.", embed=attack_embed)
 
+# =========================================================
+# Quotes
+# =========================================================
+
+@
 
 # =========================================================
 # Common Functions
@@ -468,19 +395,7 @@ def die_roll(die_count, die_size):
 @bot.event
 async def on_ready():
     print(f"{bot.user.name} has connected to Discord.")
-    xp_filename = "player_xp.json"
-    global player_xp
-    with os.scandir(path="data/") as data_dir:
-        xp_file = [entry.name for entry in data_dir if entry.name == xp_filename]
-    if len(xp_file) == 0:
-        with open("./data/" + xp_filename, "+w") as file:
-            print("Loading new XP File.")
-            json.dump(player_xp, file)
-    else:
-        with open("./data/" + xp_file[0]) as player_data:
-            print("Loading data.")
-            if os.stat("./data/" + xp_filename).st_size > 0:
-                player_xp = json.load(player_data)
+    
 
-
-bot.run(token)
+if __name__ == "__main__":
+    bot.run(token)
