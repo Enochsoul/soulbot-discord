@@ -3,9 +3,13 @@ import os
 import random
 import re
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from dotenv import load_dotenv, set_key
 from tabulate import tabulate
+import sqlite3
+from sqlite3 import Error
+from datetime import datetime, tzinfo, timedelta
+import time
 
 load_dotenv()
 
@@ -367,15 +371,104 @@ async def attacknpc(ctx, bonus: int = 0):
     attack_embed.add_field(name="Escalation", value=f"N/A", inline=True)
     await ctx.send(f"{ctx.author.mention} rolled an **NPC attack**.", embed=attack_embed)
 
+
 # =========================================================
 # Quotes
 # =========================================================
 
-@
+
+# =========================================================
+# Next Game
+# =========================================================
+
+@bot.group(help="Schedules and prints out the date of the next game.")
+async def nextgame(ctx):
+    if ctx.invoked_subcommand is None:
+        c.execute('''SELECT next_date FROM next_game where id=?''', (1,))
+        ng = c.fetchone()
+        if not ng:
+            await ctx.send("The next game hasn't been scheduled yet.")
+        else:
+            nextgame_embed = nextgame_embed_template(ng[0])
+            await ctx.send(embed=nextgame_embed)
+
+
+@nextgame.group(
+    help="Sets a date/time for the next game. Use no subcommands for the usual Bat time, 14 days from today.")
+async def schedule(ctx):
+    t = datetime.now().replace(hour=17, minute=0, second=0, microsecond=0)
+    d = timedelta(days=14)
+    default_date = t + d
+    if ctx.invoked_subcommand is None:
+        c.execute('''INSERT OR REPLACE INTO next_game(id, created_date, next_date) 
+                     VALUES(?,?,?)''', (1, datetime.today(), default_date))
+        bot_db.commit()
+        nextgame_embed = nextgame_embed_template(default_date)
+        await ctx.send(embed=nextgame_embed)
+
+
+@schedule.command(help="Sets the date of the next game, assumes default start time of 1700MT/1900ET. Format=DD/MM/YYYY")
+async def setdate(ctx, schedule_date: str):
+    sch_day, sch_month, sch_year = [int(i) for i in schedule_date.split('/')]
+    now = datetime.now()
+    if not schedule_date:
+        await ctx.send("Please use the format: DD/MM/YYYY(EG: 05/31/2020)")
+    elif (sch_day > 31) or (sch_month > 12) or (sch_year != now.year):
+        await ctx.send("Please use the format: DD/MM/YYYY(EG: 05/31/2020)")
+    else:
+        output_date = datetime.now().replace(month=sch_month, day=sch_day, hour=17, minute=0, second=0, microsecond=0)
+        c.execute('''INSERT OR REPLACE INTO next_game(id, created_date, next_date) 
+                         VALUES(?,?,?)''', (1, datetime.today(), output_date))
+        bot_db.commit()
+        nextgame_embed = nextgame_embed_template(output_date)
+        await ctx.send(f"Set next game date to {sch_day}/{sch_month}/{sch_year} at the default time.  "
+                       f"Use the {ctx.prefix}nextgame schedule time command to change the time of the next game.",
+                       embed=nextgame_embed)
+
+
+@schedule.command(help="Sets the time of the next game, in 24 hour time.  Use the date command first. Format=HH:MM")
+async def settime(ctx, schedule_time: str):
+    sch_hour, sch_minute = [int(i) for i in schedule_time.split(":")]
+    if not schedule_time:
+        await ctx.send("Please use the format: HH:MM")
+    elif (sch_hour > 24) or (sch_minute > 59):
+        await ctx.send("Please use 24 hour time in the format: HH:MM(EG: 17:00)")
+    else:
+        c.execute('''SELECT next_date FROM next_game''')
+        ng = c.fetchone()
+        output_date = ng[0].replace(hour=sch_hour, minute=sch_minute, microsecond=0, second=0)
+        c.execute('''INSERT OR REPLACE INTO next_game(id, created_date, next_date) 
+                                 VALUES(?,?,?)''', (1, datetime.today(), output_date))
+        bot_db.commit()
+        nextgame_embed = nextgame_embed_template(output_date)
+        await ctx.send(f"Set next game date to {output_date}.", embed=nextgame_embed)
+
+
+def nextgame_embed_template(input_date):
+    time_until = input_date - datetime.now()
+    days = time_until.days
+    hours, remainder = divmod(time_until.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    output_embed = discord.Embed(title=f"__**Next Scheduled Game**__",
+                                 description=f"Time until next game: {days} Days, {hours} Hours, {minutes} Minutes")
+    output_embed.add_field(name="__Eastern Time__",
+                           value=f"{input_date.astimezone(ET).strftime('%d/%m/%Y %H:%M')}", inline=False)
+    output_embed.add_field(name="__Mountain Time__",
+                           value=f"{input_date.astimezone(MT).strftime('%d/%m/%Y %H:%M')}", inline=False)
+    output_embed.add_field(name="__Pacific Time__",
+                           value=f"{input_date.astimezone(PT).strftime('%d/%m/%Y %H:%M')}", inline=False)
+    return output_embed
+
+
+@tasks.loop(minutes=1)
+async def game_announce():
+    print("Testing!")
+
 
 # =========================================================
 # Common Functions
 # =========================================================
+
 
 def die_roll(die_count, die_size):
     count = die_count
@@ -389,13 +482,44 @@ def die_roll(die_count, die_size):
     return result_list, total
 
 
+class Zone(tzinfo):
+    def __init__(self, offset, isdst, name):
+        self.offset = offset
+        self.isdst = isdst
+        self.name = name
+
+    def utcoffset(self, dt):
+        return timedelta(hours=self.offset) + self.dst(dt)
+
+    def dst(self, dt):
+        return timedelta(hours=1) if self.isdst else timedelta(0)
+
+    def tzname(self, dt):
+        return self.name
+
+
+daylight_check = bool(time.daylight)
+
+GMT = Zone(0, daylight_check, 'GMT')
+ET = Zone(-5, daylight_check, 'ET')
+MT = Zone(-7, daylight_check, 'MT')
+PT = Zone(-8, daylight_check, 'PT')
+
+
 # =========================================================
 # Bot Start
 # =========================================================
+
 @bot.event
 async def on_ready():
     print(f"{bot.user.name} has connected to Discord.")
-    
+
 
 if __name__ == "__main__":
+    bot_db = sqlite3.connect('data/discordbot.sql', detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
+    c = bot_db.cursor()
+    c.execute(
+        '''CREATE TABLE IF NOT EXISTS next_game(id INTEGER PRIMARY KEY, created_date timestamp, next_date timestamp)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS quotes(id INTEGER PRIMARY KEY, quote TEXT)''')
+    bot_db.commit()
     bot.run(token)
