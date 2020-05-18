@@ -494,7 +494,6 @@ def nextgame_embed_template(input_date):
 
 @tasks.loop(minutes=15)
 async def game_announce():
-    print("Task Loop Entered.")
     c.execute('''SELECT next_date FROM next_game''')
     ng = c.fetchone()
     for channel in bot.get_all_channels():
