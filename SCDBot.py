@@ -505,10 +505,10 @@ async def game_announce():
         if channel.name == "general":
             general_channel = bot.get_channel(channel.id)
             break
-    if countdown.seconds < 3600:
+    if countdown.seconds < 3600 and countdown.days == 0:
         minutes, seconds = divmod(countdown.seconds, 60)
         game_announce.stop()
-        await general_channel.send(f"here Next game in {minutes} minutes!\n"
+        await general_channel.send(f"@here Next game in {minutes} minutes!\n"
                                    f"Further announcements have been disabled.")
 
 
