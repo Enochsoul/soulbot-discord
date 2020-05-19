@@ -381,7 +381,7 @@ async def attacknpc(ctx, bonus: int = 0):
 # Next Game
 # =========================================================
 
-@bot.group(help="Schedules and prints out the date of the next game.")
+@bot.group(help="Prints out the date of the next game.")
 async def nextgame(ctx):
     if ctx.invoked_subcommand is None:
         c.execute('''SELECT next_date FROM next_game where id=?''', (1,))
@@ -418,13 +418,13 @@ async def setdate(ctx, schedule_date: str = ""):
     elif (sch_day > 31) or (sch_month > 12) or (sch_year != now.year):
         await ctx.send("Please use the format: DD/MM/YYYY(EG: 05/31/2020)")
     else:
-        output_date = datetime.now().replace(month=sch_month, day=sch_day, hour=17, minute=0, second=0, microsecond=0)
+        output_date = datetime(2020, sch_month, sch_day, 23, 0, 0, 0, tzinfo=GMT)
         c.execute('''INSERT OR REPLACE INTO next_game(id, created_date, next_date) 
                          VALUES(?,?,?)''', (1, datetime.today(), output_date.replace(tzinfo=None)))
         bot_db.commit()
         nextgame_embed = nextgame_embed_template(output_date.astimezone(MT))
-        await ctx.send(f"Set next game date to {sch_day}/{sch_month}/{sch_year} at the default time.  "
-                       f"Use the {ctx.prefix}nextgame schedule time command to change the time of the next game.",
+        await ctx.send(f"Set next game date to {sch_day}/{sch_month}/{sch_year} at the default time.\n  "
+                       f"Use the __{ctx.prefix}nextgame schedule settime__ command if you want to change the time.",
                        embed=nextgame_embed)
 
 
@@ -451,27 +451,27 @@ async def settime(ctx, *, schedule_time: str = ""):
             c.execute('''SELECT next_date FROM next_game WHERE id=?''', (1,))
             ng = c.fetchone()
             output_date = ng[0].replace(hour=sch_hour, minute=sch_minute, microsecond=0, second=0,
-                                        tzinfo=time_zone)
+                                        tzinfo=time_zone).astimezone(GMT)
             c.execute('''INSERT OR REPLACE INTO next_game(id, created_date, next_date) 
                                      VALUES(?,?,?)''', (1, datetime.today(), output_date.replace(tzinfo=None)))
             bot_db.commit()
             nextgame_embed = nextgame_embed_template(output_date.astimezone(MT))
-            await ctx.send(f"Set next game date to {output_date}.", embed=nextgame_embed)
+            await ctx.send(f"Set next game date to {output_date.strftime('%d/%m/%Y %H:%M')}.", embed=nextgame_embed)
 
 
 @schedule.command(help="Toggles next game announcements on or off.")
 async def announce(ctx, toggle: str = ""):
     if not toggle:
-        if game_announce.get_task() is None:
-            await ctx.send("Game announcements are not active.")
-        else:
+        if game_announce.next_iteration is not None:
             await ctx.send("Game announcements are active.")
+        else:
+            await ctx.send("Game announcements are not active.")
     elif toggle.lower() == "off":
         game_announce.stop()
-        await ctx.send("Stopping next game announcements.")
+        await ctx.send("Disabling next game announcements.")
     elif toggle.lower() == "on":
         game_announce.start()
-        await ctx.send("Starting next game announcements.")
+        await ctx.send("Enabling next game announcements.")
     else:
         await ctx.send("Please specify 'on' or 'off' to toggle game announcements.")
 
@@ -494,16 +494,17 @@ def nextgame_embed_template(input_date):
 
 @tasks.loop(minutes=15)
 async def game_announce():
-    c.execute('''SELECT next_date FROM next_game''')
+    c.execute('''SELECT next_date FROM next_game WHERE id=?''', (1,))
     ng = c.fetchone()
+    countdown = ng[0].replace(tzinfo=GMT) - datetime.now(GMT)
     for channel in bot.get_all_channels():
         if channel.name == "general":
             general_channel = bot.get_channel(channel.id)
             break
-    countdown = ng[0] - datetime.now()
     if countdown.seconds < 3600:
         minutes, seconds = divmod(countdown.seconds, 60)
-        await general_channel.send(f"@here Next game in {minutes} minutes!")
+        game_announce.stop()
+        await general_channel.send(f"here Next game in {minutes} minutes!\nFurther announcements have been disabled.")
 
 
 # =========================================================
