@@ -430,7 +430,7 @@ async def setdate(ctx, schedule_date: str = ""):
         bot_db.commit()
         nextgame_embed = nextgame_embed_template(output_date.astimezone(MT))
         await ctx.send(f"Set next game date to {sch_day}/{sch_month}/{sch_year} at the default time.\n  "
-                       f"Use the **{ctx.prefix}nextgame schedule time** command if you want to change the time.",
+                       f"Use the **{ctx.prefix}next schedule time** command if you want to change the time.",
                        embed=nextgame_embed)
 
 
