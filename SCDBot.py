@@ -381,7 +381,7 @@ async def attacknpc(ctx, bonus: int = 0):
 # Next Game
 # =========================================================
 
-@bot.group(help="Prints out the date of the next game.")
+@bot.group(name="next", help="Prints out the date of the next game.")
 async def nextgame(ctx):
     if ctx.invoked_subcommand is None:
         c.execute('''SELECT next_date FROM next_game where id=?''', (1,))
@@ -394,22 +394,28 @@ async def nextgame(ctx):
             await ctx.send(embed=nextgame_embed)
 
 
-@nextgame.group(
-    help="Sets a date/time for the next game. Use no subcommands for the usual Bat time, 14 days from today.")
+@nextgame.group(help="Commands to schedule when the next game is.")
 async def schedule(ctx):
+    if ctx.invoked_subcommand is None:
+        await ctx.send(f"Additional arguments requires, see **{ctx.prefix}help next schedule** for available options.")
+
+
+@schedule.command(help="Sets the default date/time for the next game. Same bat time, 14 days from today.")
+async def default(ctx):
+    # Default time is 5PM Mountain time, every 2 weeks.  Change days and hours to update default.
     t = datetime.now().replace(hour=17, minute=0, second=0, microsecond=0)
     d = timedelta(days=14)
     default_date = t + d
-    if ctx.invoked_subcommand is None:
-        output_date = default_date.astimezone(GMT)
-        c.execute('''INSERT OR REPLACE INTO next_game(id, created_date, next_date) 
-                     VALUES(?,?,?)''', (1, datetime.today(), output_date.replace(tzinfo=None)))
-        bot_db.commit()
-        nextgame_embed = nextgame_embed_template(default_date.astimezone(MT))
-        await ctx.send(embed=nextgame_embed)
+    output_date = default_date.astimezone(GMT)
+    c.execute('''INSERT OR REPLACE INTO next_game(id, created_date, next_date) 
+                 VALUES(?,?,?)''', (1, datetime.today(), output_date.replace(tzinfo=None)))
+    bot_db.commit()
+    nextgame_embed = nextgame_embed_template(default_date.astimezone(MT))
+    await ctx.send(embed=nextgame_embed)
 
 
-@schedule.command(help="Sets the date of the next game, assumes default start time of 1700MT/1900ET. Format=DD/MM/YYYY")
+@schedule.command(name="date",
+                  help="Sets the date of the next game, assumes default start time of 1700MT/1900ET. Format=DD/MM/YYYY")
 async def setdate(ctx, schedule_date: str = ""):
     sch_day, sch_month, sch_year = [int(i) for i in schedule_date.split('/')]
     now = datetime.now()
@@ -424,11 +430,12 @@ async def setdate(ctx, schedule_date: str = ""):
         bot_db.commit()
         nextgame_embed = nextgame_embed_template(output_date.astimezone(MT))
         await ctx.send(f"Set next game date to {sch_day}/{sch_month}/{sch_year} at the default time.\n  "
-                       f"Use the __{ctx.prefix}nextgame schedule settime__ command if you want to change the time.",
+                       f"Use the **{ctx.prefix}nextgame schedule time** command if you want to change the time.",
                        embed=nextgame_embed)
 
 
-@schedule.command(help="Sets the time of the next game, in 24 hour time with timezone. Format=HH:MM TZ")
+@schedule.command(name="time",
+                  help="Sets the time of the next game, in 24 hour time with timezone. Format=HH:MM TZ")
 async def settime(ctx, *, schedule_time: str = ""):
     schedule_split = schedule_time.split()
     if len(schedule_split) < 2:
@@ -459,7 +466,7 @@ async def settime(ctx, *, schedule_time: str = ""):
             await ctx.send(f"Set next game date to {output_date.strftime('%d/%m/%Y %H:%M')}.", embed=nextgame_embed)
 
 
-@schedule.command(help="Toggles next game announcements on or off.")
+@nextgame.command(help="Toggles next game announcements.  Options are 'on' or 'off.")
 async def announce(ctx, toggle: str = ""):
     if not toggle:
         if game_announce.next_iteration is not None:
@@ -468,6 +475,7 @@ async def announce(ctx, toggle: str = ""):
             await ctx.send("Game announcements are not active.")
     elif toggle.lower() == "off":
         game_announce.stop()
+        game_announce.cancel()
         await ctx.send("Disabling next game announcements.")
     elif toggle.lower() == "on":
         game_announce.start()
@@ -504,7 +512,8 @@ async def game_announce():
     if countdown.seconds < 3600:
         minutes, seconds = divmod(countdown.seconds, 60)
         game_announce.stop()
-        await general_channel.send(f"here Next game in {minutes} minutes!\nFurther announcements have been disabled.")
+        await general_channel.send(f"here Next game in {minutes} minutes!\n"
+                                   f"Further announcements have been disabled.")
 
 
 # =========================================================
