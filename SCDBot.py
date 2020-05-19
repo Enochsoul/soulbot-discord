@@ -402,8 +402,8 @@ async def schedule(ctx):
 
 @schedule.command(help="Sets the default date/time for the next game. Same bat time, 14 days from today.")
 async def default(ctx):
-    # Default time is 5PM Mountain time, every 2 weeks.  Change days and hours to update default.
-    t = datetime.now().replace(hour=17, minute=0, second=0, microsecond=0)
+    # Default time is 1PM Mountain time, every 2 weeks.  Change days and hours to update default.
+    t = datetime.now().replace(hour=13, minute=0, second=0, microsecond=0)
     d = timedelta(days=14)
     default_date = t + d
     output_date = default_date.astimezone(GMT)
@@ -415,7 +415,7 @@ async def default(ctx):
 
 
 @schedule.command(name="date",
-                  help="Sets the date of the next game, assumes default start time of 1700MT/1900ET. Format=DD/MM/YYYY")
+                  help="Sets the date of the next game, assumes default start time of 1400MT/1600ET. Format=DD/MM/YYYY")
 async def setdate(ctx, schedule_date: str = ""):
     sch_day, sch_month, sch_year = [int(i) for i in schedule_date.split('/')]
     now = datetime.now()
@@ -424,7 +424,7 @@ async def setdate(ctx, schedule_date: str = ""):
     elif (sch_day > 31) or (sch_month > 12) or (sch_year != now.year):
         await ctx.send("Please use the format: DD/MM/YYYY(EG: 05/31/2020)")
     else:
-        output_date = datetime(2020, sch_month, sch_day, 23, 0, 0, 0, tzinfo=GMT)
+        output_date = datetime(2020, sch_month, sch_day, 19, 0, 0, 0, tzinfo=GMT)
         c.execute('''INSERT OR REPLACE INTO next_game(id, created_date, next_date) 
                          VALUES(?,?,?)''', (1, datetime.today(), output_date.replace(tzinfo=None)))
         bot_db.commit()
@@ -436,34 +436,30 @@ async def setdate(ctx, schedule_date: str = ""):
 
 @schedule.command(name="time",
                   help="Sets the time of the next game, in 24 hour time with timezone. Format=HH:MM TZ")
-async def settime(ctx, *, schedule_time: str = ""):
-    schedule_split = schedule_time.split()
-    if len(schedule_split) < 2:
-        await ctx.send("Please use 24 hour time with timezone in the format: HH:MM TZ(Eg: 19:00 ET)")
+async def settime(ctx, schedule_time: str, schedule_tz: str):
+    sch_hour, sch_minute = [int(i) for i in schedule_time.split(":")]
+    if (sch_hour > 24) or (sch_minute > 59):
+        await ctx.send("Please use 24 hour time in the format: HH:MM TZ(Eg: 19:00 ET)")
+    elif schedule_tz.upper() not in ["ET", "CT", "MT", "PT"]:
+        await ctx.send("Please indicate your timezone, ET, CT, MT, or PT.")
     else:
-        sch_hour, sch_minute = [int(i) for i in schedule_split[0].split(":")]
-        if (sch_hour > 24) or (sch_minute > 59):
-            await ctx.send("Please use 24 hour time in the format: HH:MM TZ(Eg: 19:00 ET)")
-        elif schedule_split[1] not in ["ET", "CT", "MT", "PT"]:
-            await ctx.send("Please indicate your timezone, ET, CT, MT, or PT.")
-        else:
-            if schedule_split[1] == "ET":
-                time_zone = ET
-            elif schedule_split[1] == "CT":
-                time_zone = CT
-            elif schedule_split[1] == "MT":
-                time_zone = MT
-            elif schedule_split[1] == "PT":
-                time_zone = PT
-            c.execute('''SELECT next_date FROM next_game WHERE id=?''', (1,))
-            ng = c.fetchone()
-            output_date = ng[0].replace(hour=sch_hour, minute=sch_minute, microsecond=0, second=0,
-                                        tzinfo=time_zone).astimezone(GMT)
-            c.execute('''INSERT OR REPLACE INTO next_game(id, created_date, next_date) 
-                                     VALUES(?,?,?)''', (1, datetime.today(), output_date.replace(tzinfo=None)))
-            bot_db.commit()
-            nextgame_embed = nextgame_embed_template(output_date.astimezone(MT))
-            await ctx.send(f"Set next game date to {output_date.strftime('%d/%m/%Y %H:%M')}.", embed=nextgame_embed)
+        if schedule_tz.upper() == "ET":
+            time_zone = ET
+        elif schedule_tz.upper() == "CT":
+            time_zone = CT
+        elif schedule_tz.upper() == "MT":
+            time_zone = MT
+        elif schedule_tz.upper() == "PT":
+            time_zone = PT
+        c.execute('''SELECT next_date FROM next_game WHERE id=?''', (1,))
+        ng = c.fetchone()
+        output_date = ng[0].replace(hour=sch_hour, minute=sch_minute, microsecond=0, second=0,
+                                    tzinfo=time_zone).astimezone(GMT)
+        c.execute('''INSERT OR REPLACE INTO next_game(id, created_date, next_date) 
+                                 VALUES(?,?,?)''', (1, datetime.today(), output_date.replace(tzinfo=None)))
+        bot_db.commit()
+        nextgame_embed = nextgame_embed_template(output_date.astimezone(MT))
+        await ctx.send(f"Next game time successfully set.", embed=nextgame_embed)
 
 
 @nextgame.command(help="Toggles next game announcements.  Options are 'on' or 'off.")
@@ -514,6 +510,18 @@ async def game_announce():
         game_announce.stop()
         await general_channel.send(f"here Next game in {minutes} minutes!\n"
                                    f"Further announcements have been disabled.")
+
+
+@settime.error
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandInvokeError):
+        await ctx.send("Please use 24 hour time in the format: HH:MM TZ(Eg: 19:00 ET)")
+
+
+@setdate.error
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandInvokeError):
+        await ctx.send("Please use the format: DD/MM/YYYY(EG: 05/31/2020)")
 
 
 # =========================================================
