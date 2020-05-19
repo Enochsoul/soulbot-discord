@@ -18,7 +18,6 @@ EG:
 5) Create Discord Role called GM or DM, and assign to the user acting as the DM.  No special permissions required.  Access to some commands is restricted to user with this Role name.  
   
 ### Current Features:
-- XP Tracking - I know it's not expressly used for 13th Age, but I wrote it before I realized and just left it in.
 - OGL/d20 initiative tracking(As used by 13th Age), should also work for DnD 4e.
     - Players roll initiative and get added to a tracking table.
     - Players can delay their initiative to a set number smaller than their current.
@@ -29,4 +28,7 @@ EG:
     - Commands advance the initiative order, indicating who's turn it currently is and tracks the Escalation Die(13th Age specific).
 - Dice Roller(In the format of NdN+N with highlighting of natural max rolls.  No rerolls or dice popping)
 - Attack dice roller, rolls 1d20 plus supplied player bonus.  Adds escalation dice automatically, and breaks out natural roll value.
+- Next Game schedule.
+    - Shows when the next game is in several different timezones, and time until the next game.
+    - Toggleable next game @mention announcement in the last hour before the game.
 
