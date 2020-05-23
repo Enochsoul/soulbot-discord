@@ -37,13 +37,32 @@ async def on_message_error(ctx, error):
 # =========================================================
 # Initiative Tracker
 # =========================================================
-
+'''
 init_dict = {}
 init_tracker = []
 init_active = False
 init_turn = 0
 multiplier = 0
 escalation = 0
+'''
+
+
+class InitiativeTrack:
+    def __init__(self):
+        self.init_dict = {}
+        self.init_tracker = []
+        self.init_active = False
+        self.init_turn = 0
+        self.multiplier = 0
+        self.escalation = 0
+
+    def reset(self):
+        self.init_dict = {}
+        self.init_tracker = []
+        self.init_active = False
+        self.init_turn = 0
+        self.multiplier = 0
+        self.escalation = 0
 
 
 @bot.group(help="Rolls initiative and builds an order table.")
