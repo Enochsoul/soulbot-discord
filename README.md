@@ -26,9 +26,11 @@ EG:
     - DM can remove any player or NPC from the initiative order.
     - DM commands on players can be referenced by Discord @ mention.
     - Commands advance the initiative order, indicating who's turn it currently is and tracks the Escalation Die(13th Age specific).
+    - DM can directly change who has the active turn.
+    - Initiative database written to disk, recoverable with DM command if there are bot issues.
 - Dice Roller(In the format of NdN+N with highlighting of natural max rolls.  No rerolls or dice popping)
 - Attack dice roller, rolls 1d20 plus supplied player bonus.  Adds escalation dice automatically, and breaks out natural roll value.
 - Next Game schedule.
     - Shows when the next game is in several different timezones, and time until the next game.
     - Toggleable next game @mention announcement in the last hour before the game.
-
+    
