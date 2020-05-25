@@ -63,6 +63,8 @@ async def reset(ctx):
     init_dict = {}
     init_turn = []
     escalation = 0
+    c.execute('''DELETE FROM initiative''')
+    bot_db.commit()
     await ctx.send("Initiative Tracker is reset and active.")
 
 
@@ -100,6 +102,10 @@ async def start(ctx):
         init_active = True
         init_turn[0] = '--->'
         init_tracker = init_table(init_dict, init_turn)
+        db_insert = [(k, v) for k, v in init_dict.items()]
+        c.execute('''DELETE FROM initiative''')
+        c.executemany('''INSERT OR REPLACE INTO initiative(name, init) VALUES(?,?)''', db_insert)
+        bot_db.commit()
         embed = init_embed_template(init_tracker)
         await ctx.send(embed=embed)
 
@@ -157,6 +163,9 @@ async def delay(ctx, new_init: int):
     else:
         init_dict[ctx.author.display_name] = new_init
         init_tracker = init_table(init_dict, init_turn)
+        db_insert = [(k, v) for k, v in init_dict.items()]
+        c.executemany('''INSERT OR REPLACE INTO initiative(name, init) VALUES(?,?)''', db_insert)
+        bot_db.commit()
         embed = init_embed_template(init_tracker)
         await ctx.send(
             f"Initiative for {ctx.author.display_name} has been delayed to {init_dict[ctx.author.display_name]}. "
@@ -179,11 +188,14 @@ async def npc(ctx, npc_name: str, init_bonus: int = 0):
     for sublist in init_tracker:
         if '--->' in sublist:
             player_turn = init_tracker[init_tracker.index(sublist)][1]
-    if init_active is True:
+    if init_active:
         initiative = die_roll(1, 20)[1]
         init_dict[npc_name] = initiative + init_bonus
         init_turn = ['    ' for i in range(1, len(init_dict) + 1)]
         init_tracker = init_table(init_dict, init_turn)
+        db_insert = [(k, v) for k, v in init_dict.items()]
+        c.executemany('''INSERT OR REPLACE INTO initiative(name, init) VALUES(?,?)''', db_insert)
+        bot_db.commit()
         for sublist in init_tracker:
             if player_turn in sublist:
                 init_tracker[init_tracker.index(sublist)][0] = '--->'
@@ -233,6 +245,9 @@ async def delay(ctx, npc_name: str, new_init: int):
     else:
         init_dict[npc_name] = new_init
         init_tracker = init_table(init_dict, init_turn)
+        db_insert = [(k, v) for k, v in init_dict.items()]
+        c.executemany('''INSERT OR REPLACE INTO initiative(name, init) VALUES(?,?)''', db_insert)
+        bot_db.commit()
         embed = init_embed_template(init_tracker)
         await ctx.send(
             f"Initiative for {npc_name} has been delayed to {init_dict[npc_name]}. "
@@ -262,6 +277,10 @@ async def remove(ctx, name: str):
             del init_dict[name]
             init_turn = ['    ' for i in range(1, len(init_dict) + 1)]
             init_tracker = init_table(init_dict, init_turn)
+            db_insert = [(k, v) for k, v in init_dict.items()]
+            c.execute('''DELETE from initiative''')
+            c.executemany('''INSERT OR REPLACE INTO initiative(name, init) VALUES(?,?)''', db_insert)
+            bot_db.commit()
             for sublist in init_tracker:
                 if active_user in sublist:
                     init_tracker[init_tracker.index(sublist)][0] = '--->'
@@ -295,6 +314,9 @@ async def update(ctx, name: str, new_init: int):
     else:
         init_dict[name] = new_init
         init_tracker = init_table(init_dict, init_turn)
+        db_insert = [(k, v) for k, v in init_dict.items()]
+        c.executemany('''INSERT OR REPLACE INTO initiative(name, init) VALUES(?,?)''', db_insert)
+        bot_db.commit()
         await ctx.send(f"{name}'s initiative has been manually set to {new_init}.")
 
 
@@ -316,6 +338,29 @@ async def active(ctx, name: str):
                 init_tracker = init_table(init_dict, init_turn)
         embed = init_embed_template(init_tracker)
         await ctx.send(f"{name} is now the active combatant.", embed=embed)
+
+
+@dm.command(
+    help="DON'T DO THIS UNLESS YOU MEAN IT. Rebuild the init tracker from the backup database.  "
+         "Deactivates and resets the tracker, and resets the escalation die.")
+async def rebuild(ctx):
+    global init_dict
+    global init_turn
+    global init_active
+    global init_tracker
+    global escalation
+    init_active = False
+    init_tracker = []
+    init_dict = {}
+    init_turn = []
+    escalation = 0
+    c.execute('''SELECT name, init FROM initiative''')
+    all_rows = c.fetchall()
+    init_dict = {i[0]: i[1] for i in all_rows}
+    init_turn = ['    ' for i in range(1, len(init_dict) + 1)]
+    init_tracker = init_table(init_dict, init_turn)
+    embed = init_embed_template(init_tracker)
+    await ctx.send(f"Initiative tracker has been reset and rebuilt.", embed=embed)
 
 
 def init_table(init_dictionary, turn_order):
@@ -647,5 +692,6 @@ if __name__ == "__main__":
     c.execute(
         '''CREATE TABLE IF NOT EXISTS next_game(id INTEGER PRIMARY KEY, created_date timestamp, next_date timestamp)''')
     c.execute('''CREATE TABLE IF NOT EXISTS quotes(id INTEGER PRIMARY KEY, quote TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS initiative(name TEXT UNIQUE PRIMARY KEY, init INTEGER)''')
     bot_db.commit()
     bot.run(token)
