@@ -488,6 +488,37 @@ async def attacknpc(ctx, bonus: int = 0):
 # Quotes
 # =========================================================
 
+@bot.group(help="Display a random quote submitted to the database, or one containing .")
+async def quote(ctx):
+    if ctx.invoked_subcommand is None:
+        c.execute('''SELECT * FROM quotes''')
+        count = len(c.fetchall())
+        if count > 0:
+            c.execute('''SELECT quote FROM quotes where id=?''', (random.randint(1, count),))
+            quote_text = c.fetchone()[0]
+            await ctx.send(f'QUOTE: "{quote_text}"')
+        else:
+            await ctx.send(f"No quotes in the database.")
+
+
+@quote.group(name="addquote", help="Add a quote to the database.")
+async def add_quote(ctx, *, quote_text: str):
+    c.execute('''INSERT INTO quotes(quote) VALUES(?)''', (quote_text,))
+    bot_db.commit()
+    await ctx.send(f'Added "{str(quote_text)}" to quotes database.')
+
+
+@quote.group(name='search', help='Search for a quote containing a specific term.')
+async def quote_search(ctx, *, search_term: str):
+    c.execute('''SELECT quote FROM quotes where quote LIKE ?''', ("%" + str(search_term) + "%",))
+    quote_text = c.fetchall()
+    print(quote_text)
+    if len(quote_text) > 0:
+        random_index = random.randint(0, len(quote_text) - 1)
+        await ctx.send(f'QUOTE: "{quote_text[random_index][0]}"')
+    else:
+        await ctx.send(f'No quote found with the term "{search_term}"')
+
 
 # =========================================================
 # Next Game
