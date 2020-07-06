@@ -1,4 +1,3 @@
-import json
 import os
 import random
 import re
@@ -45,10 +44,11 @@ init_turn = []
 escalation = 0
 
 
-@bot.group(help="Rolls initiative and builds an order table.")
+@bot.group(case_insensitive=True, help="Rolls initiative and builds an order table.")
 async def init(ctx):
     if ctx.invoked_subcommand is None:
-        await ctx.send(f"Additional arguments required, see **{ctx.prefix}help init** for available options.")
+        await ctx.send(f"Additional arguments required, \
+                       see **{ctx.prefix}help init** for available options.")
 
 
 @init.command(help="Clears the Initiative tracker, and starts a new order.")
@@ -68,8 +68,9 @@ async def reset(ctx):
     await ctx.send("Initiative Tracker is reset and active.")
 
 
-@init.command(help="Rolls your initiative plus the supplied bonus and adds you to the order.")
-async def roll(ctx, init_bonus: int = 0):
+@init.command(name='roll', help="Rolls your initiative plus the supplied "
+                                "bonus and adds you to the order.")
+async def init_roll(ctx, init_bonus: int = 0):
     global init_active
     global init_dict
     global init_tracker
@@ -118,8 +119,8 @@ async def show(ctx):
     await ctx.send(embed=embed)
 
 
-@init.command(help="Advances the initiative order.")
-async def next(ctx):
+@init.command(name='next', help="Advances the initiative order.")
+async def next_turn(ctx):
     global init_turn
     global init_active
     global init_tracker
@@ -172,7 +173,7 @@ async def delay(ctx, new_init: int):
             f"Initiative order has been recalculated.", embed=embed)
 
 
-@init.group(help="Commands for the DM.")
+@init.group(case_insensitive=True, help="Commands for the DM.")
 @commands.has_role("DM" or "GM")
 async def dm(ctx):
     if ctx.invoked_subcommand is None:
@@ -224,8 +225,8 @@ async def escalate(ctx, value_change: int):
         await ctx.send(f"Tracker not active, use **{ctx.prefix}init start** to begin.")
 
 
-@dm.command(help="Allows DM to delay NPC/Monster turns.")
-async def delay(ctx, npc_name: str, new_init: int):
+@dm.command(name='delay', help="Allows DM to delay NPC/Monster turns.")
+async def dm_delay(ctx, npc_name: str, new_init: int):
     global init_active
     global init_tracker
     global init_dict
@@ -255,8 +256,8 @@ async def delay(ctx, npc_name: str, new_init: int):
 
 
 @dm.command(help='Allows DM to remove someone(player or NPC) from the initiative order.  '
-                 'Specified name for NPCs is case sensitive, use "" around name if it includes spaces.  '
-                 'Players can be @ mentioned.')
+                 'Specified name for NPCs is case sensitive, use "" around name if '
+                 'it includes spaces.  Players can be @ mentioned.')
 async def remove(ctx, name: str):
     global init_active
     global init_tracker
@@ -380,7 +381,7 @@ def init_embed_template(tracker):
 
 
 @dm.error
-async def on_command_error(ctx, error):
+async def on_dm_error(ctx, error):
     if isinstance(error, commands.MissingRole):
         await ctx.send(f"{error}")
     elif isinstance(error, commands.errors.CommandInvokeError):
@@ -388,8 +389,8 @@ async def on_command_error(ctx, error):
         await ctx.send(f"Something went wrong, check the bot output.")
 
 
-@roll.error
-async def on_command_error(ctx, error):
+@init_roll.error
+async def on_roll_error(ctx, error):
     if isinstance(error, commands.CommandInvokeError):
         await ctx.send("Tracker is not started.")
     elif isinstance(error, commands.MissingRequiredArgument):
@@ -526,7 +527,8 @@ async def default(ctx):
 
 
 @schedule.command(name="date",
-                  help="Sets the date of the next game, assumes default start time of 1400MT/1600ET. Format=DD/MM/YYYY")
+                  help="Sets the date of the next game, assumes default start "
+                       "time of 1400MT/1600ET. Format=DD/MM/YYYY")
 async def setdate(ctx, schedule_date: str = ""):
     sch_day, sch_month, sch_year = [int(i) for i in schedule_date.split('/')]
     now = datetime.now()
@@ -537,7 +539,8 @@ async def setdate(ctx, schedule_date: str = ""):
     else:
         output_date = datetime(2020, sch_month, sch_day, 19, 0, 0, 0, tzinfo=GMT)
         c.execute('''INSERT OR REPLACE INTO next_game(id, created_date, next_date) 
-                         VALUES(?,?,?)''', (1, datetime.today(), output_date.replace(tzinfo=None)))
+                         VALUES(?,?,?)''', (1, datetime.today(),
+                                            output_date.replace(tzinfo=None)))
         bot_db.commit()
         nextgame_embed = nextgame_embed_template(output_date.astimezone(MT))
         await ctx.send(f"Set next game date to {sch_day}/{sch_month}/{sch_year} at the default time.\n  "
@@ -624,13 +627,13 @@ async def game_announce():
 
 
 @settime.error
-async def on_command_error(ctx, error):
+async def on_settime_error(ctx, error):
     if isinstance(error, commands.CommandInvokeError):
         await ctx.send("Please use 24 hour time in the format: HH:MM TZ(Eg: 19:00 ET)")
 
 
 @setdate.error
-async def on_command_error(ctx, error):
+async def on_setdate_error(ctx, error):
     if isinstance(error, commands.CommandInvokeError):
         await ctx.send("Please use the format: DD/MM/YYYY(EG: 05/31/2020)")
 
