@@ -494,7 +494,7 @@ async def quote(ctx):
         c.execute('''SELECT * FROM quotes''')
         count = len(c.fetchall())
         if count > 0:
-            c.execute('''SELECT quote FROM quotes where id=?''', (random.randint(1, count),))
+            c.execute('''SELECT quote FROM quotes ORDER BY RANDOM() LIMIT 1''')
             quote_text = c.fetchone()[0]
             await ctx.send(f'QUOTE: "{quote_text}"')
         else:
