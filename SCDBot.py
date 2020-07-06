@@ -47,8 +47,8 @@ escalation = 0
 @bot.group(case_insensitive=True, help="Rolls initiative and builds an order table.")
 async def init(ctx):
     if ctx.invoked_subcommand is None:
-        await ctx.send(f"Additional arguments required, \
-                       see **{ctx.prefix}help init** for available options.")
+        await ctx.send(f"Additional arguments required, "
+                       f"see **{ctx.prefix}help init** for available options.")
 
 
 @init.command(help="Clears the Initiative tracker, and starts a new order.")
