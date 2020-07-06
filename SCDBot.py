@@ -528,7 +528,7 @@ async def default(ctx):
 
 @schedule.command(name="date",
                   help="Sets the date of the next game, assumes default start "
-                       "time of 1400MT/1600ET. Format=DD/MM/YYYY")
+                       "time of 1300MT/1500ET. Format=DD/MM/YYYY")
 async def setdate(ctx, schedule_date: str = ""):
     sch_day, sch_month, sch_year = [int(i) for i in schedule_date.split('/')]
     now = datetime.now()
