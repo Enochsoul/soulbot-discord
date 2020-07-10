@@ -1,7 +1,9 @@
 # soulbot-discord
 Simple Discord bot for my 13th Age RPG group.
 
-Still a work in progress, requires a .env file with your discord bot token.  Right now designed to run as a standalone bot for a single server.  If you invite it to multiple servers all settings will be shared.
+A work in progress I made for my group, with no warranty implied or expressed.  I'm not a professional developer, so it's likely rough AF, but it works.  I usually squash bugs as my group finds them, if you find something feel free to submit a bug report on github.
+
+Designed to run as a standalone bot for a single discord server.  If you invite it to multiple servers all activity will be shared, so don't do that.
 
 ### Install:
 1) git clone to your chosen location.
@@ -14,7 +16,7 @@ EG:
   COMMAND_PREFIX=!
 ```
 3) Build environment from the requirements.txt.
-    - Can be in a virtual environment(recommended, it's how it's developed) or use the main system Python instance.
+    - Can be in a virtual environment(recommended, it's how it was developed) or use the main system Python instance.
 4) Run the bot script.
 5) Create Discord Role called GM or DM, and assign to the user acting as the DM.  No special permissions required.  Access to some commands is restricted to user with this Role name.  
   
@@ -23,6 +25,7 @@ EG:
     - Players roll initiative and get added to a tracking table before combat begins.
     - Players can delay their initiative to a set number smaller than their current.
     - DM can create NPCs, add them at any time before or after combat starts.
+        - NPC names should have no spaces or contained in quotation marks. EG: Bad_Guy1 or "Bad Guy1"
     - DM can update any NPC or player's initiative to any value as needed.
     - DM can remove any player or NPC from the initiative order.
     - DM commands on players can be referenced by Discord @ mention.
