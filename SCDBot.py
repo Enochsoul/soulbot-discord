@@ -12,18 +12,23 @@ import time
 
 load_dotenv()
 
-token = os.getenv('DISCORD_TOKEN')
-command_prefix = os.getenv('COMMAND_PREFIX')
 
-client = discord.Client()
+class Settings:
+    def __init__(self):
+        self.token = os.getenv('DISCORD_TOKEN')
+        self.command_prefix = os.getenv('COMMAND_PREFIX')
 
-bot = commands.Bot(command_prefix=command_prefix)
+
+config = Settings()
+
+bot = commands.Bot(command_prefix=config.command_prefix)
 
 
-@bot.command(help="Changes the bot command prefix.  Default=!")
+@bot.command(help="Changes the bot command prefix.")
 @commands.has_guild_permissions(manage_guild=True)
 async def setprefix(ctx, prefix: str):
     set_key('.env', 'COMMAND_PREFIX', prefix)
+    bot.command_prefix = prefix
     await ctx.send(f"Prefix now set to {prefix}.")
 
 
