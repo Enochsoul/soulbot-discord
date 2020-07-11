@@ -237,6 +237,7 @@ async def dm_delay(ctx, npc_name: str, new_init: int):
     for sublist in init_obj.tracker:
         if '--->' in sublist:
             npc_turn = init_obj.tracker[init_obj.tracker.index(sublist)][1]
+            break
         else:
             npc_turn = ''
     if init_obj.tracker_active is False:
@@ -499,7 +500,6 @@ async def add_quote(ctx, *, quote_text: str):
 async def quote_search(ctx, *, search_term: str):
     c.execute('''SELECT quote FROM quotes where quote LIKE ?''', ("%" + str(search_term) + "%",))
     quote_text = c.fetchall()
-    print(quote_text)
     if len(quote_text) > 0:
         random_index = random.randint(0, len(quote_text) - 1)
         await ctx.send(f'QUOTE: "{quote_text[random_index][0]}"')
