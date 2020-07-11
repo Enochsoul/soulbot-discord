@@ -6,7 +6,6 @@ from discord.ext import commands, tasks
 from dotenv import load_dotenv, set_key
 from tabulate import tabulate
 import sqlite3
-from sqlite3 import Error
 from datetime import datetime, tzinfo, timedelta
 import time
 
@@ -56,6 +55,28 @@ class InitiativeTrack:
         self.turn = []
         self.escalation = 0
 
+    def build_init_table(self):
+        init_sorted = {k: v for k, v in sorted(self.combatant_dict.items(),
+                                               key=lambda i: i[1],
+                                               reverse=True)}
+        table = [[k, init_sorted[k]] for k in init_sorted]
+        for item in table:
+            item.insert(0, self.turn[table.index(item)])
+        return table
+
+    def embed_template(self):
+        tab_tracker = tabulate(self.tracker,
+                               headers=["Active", "Player", "Initiative"],
+                               tablefmt="fancy_grid")
+        embed_template = discord.Embed(title=f"Initiative Order:",
+                                       description=f'```{tab_tracker}```',
+                                       color=0xff0000)
+        embed_template.add_field(name="Tracker Active",
+                                 value=f"{self.tracker_active}")
+        embed_template.add_field(name="Escalation Die",
+                                 value=f"{self.escalation}")
+        return embed_template
+
 
 @bot.group(case_insensitive=True, help="Rolls initiative and builds an order table.")
 async def init(ctx):
@@ -83,7 +104,7 @@ async def init_roll(ctx, init_bonus: int = 0):
         initiative = die_roll(1, 20)[1]
         init_obj.combatant_dict[ctx.author.display_name] = initiative + init_bonus
         init_obj.turn = ['    ' for i in range(1, len(init_obj.combatant_dict) + 1)]
-        init_obj.tracker = build_init_table(init_obj.combatant_dict, init_obj.turn)
+        init_obj.tracker = init_obj.build_init_table()
         await ctx.send(
             f"{ctx.author.display_name}'s Initiative is ({initiative}+{init_bonus})"
             f" {init_obj.combatant_dict[ctx.author.display_name]}.")
@@ -98,18 +119,18 @@ async def start(ctx):
     else:
         init_obj.tracker_active = True
         init_obj.turn[0] = '--->'
-        init_obj.tracker = build_init_table(init_obj.combatant_dict, init_obj.turn)
+        init_obj.tracker = init_obj.build_init_table()
         db_insert = [(k, v) for k, v in init_obj.combatant_dict.items()]
         c.execute('''DELETE FROM initiative''')
         c.executemany('''INSERT OR REPLACE INTO initiative(name, init) VALUES(?,?)''', db_insert)
         bot_db.commit()
-        embed = init_embed_template(init_obj.tracker)
+        embed = init_obj.embed_template()
         await ctx.send(embed=embed)
 
 
 @init.command(help="Shows current turn order, rolls and tracker status.")
 async def show(ctx):
-    embed = init_embed_template(init_obj.tracker)
+    embed = init_obj.embed_template()
     await ctx.send(embed=embed)
 
 
@@ -118,16 +139,16 @@ async def next_turn(ctx):
     if init_obj.tracker_active:
         if init_obj.turn.index('--->') < len(init_obj.combatant_dict) - 1:
             init_obj.turn.insert(0, init_obj.turn.pop(-1))
-            init_obj.tracker = build_init_table(init_obj.combatant_dict, init_obj.turn)
-            embed = init_embed_template(init_obj.tracker)
+            init_obj.tracker = init_obj.build_init_table()
+            embed = init_obj.embed_template()
             await ctx.send("Beginning next turn.", embed=embed)
         elif init_obj.turn.index('--->') == len(init_obj.combatant_dict) - 1:
             init_obj.turn.insert(0, init_obj.turn.pop(-1))
-            init_obj.tracker = build_init_table(init_obj.combatant_dict, init_obj.turn)
+            init_obj.tracker = init_obj.build_init_table()
             init_obj.escalation += 1
             if init_obj.escalation > 6:
                 init_obj.escalation = 6
-            embed = init_embed_template(init_obj.tracker)
+            embed = init_obj.embed_template()
             await ctx.send("Beginning next combat round.", embed=embed)
     else:
         await ctx.send(f"Tracker not active, use **{ctx.prefix}init start** to begin.")
@@ -144,18 +165,20 @@ async def delay(ctx, new_init: int):
         await ctx.send(f"{ctx.author.display_name} is not in the initiative order.")
     elif new_init > init_obj.combatant_dict[ctx.author.display_name]:
         await ctx.send(
-            f"New initiative({new_init}) must be lower than original({init_obj.combatant_dict[ctx.author.display_name]}).")
+            f"New initiative({new_init}) must be lower than original"
+            f"({init_obj.combatant_dict[ctx.author.display_name]}).")
     elif ctx.author.display_name != player_turn:
         await ctx.send(f"Delay should be done on your turn.")
     else:
         init_obj.combatant_dict[ctx.author.display_name] = new_init
-        init_obj.tracker = build_init_table(init_obj.combatant_dict, init_obj.turn)
+        init_obj.tracker = init_obj.build_init_table()
         db_insert = [(k, v) for k, v in init_obj.combatant_dict.items()]
         c.executemany('''INSERT OR REPLACE INTO initiative(name, init) VALUES(?,?)''', db_insert)
         bot_db.commit()
-        embed = init_embed_template(init_obj.tracker)
+        embed = init_obj.embed_template()
         await ctx.send(
-            f"Initiative for {ctx.author.display_name} has been delayed to {init_obj.combatant_dict[ctx.author.display_name]}. "
+            f"Initiative for {ctx.author.display_name} has been delayed to "
+            f"{init_obj.combatant_dict[ctx.author.display_name]}. "
             f"Initiative order has been recalculated.", embed=embed)
 
 
@@ -163,7 +186,8 @@ async def delay(ctx, new_init: int):
 @commands.has_role("DM" or "GM")
 async def dm(ctx):
     if ctx.invoked_subcommand is None:
-        await ctx.send(f"Additional arguments required, see **{ctx.prefix}help init dm** for available options.")
+        await ctx.send(f"Additional arguments required, see "
+                       f"**{ctx.prefix}help init dm** for available options.")
 
 
 @dm.command(help="Add NPCs/Monsters to the initiative order, before or during active combat.")
@@ -175,7 +199,7 @@ async def npc(ctx, npc_name: str, init_bonus: int = 0):
         initiative = die_roll(1, 20)[1]
         init_obj.combatant_dict[npc_name] = initiative + init_bonus
         init_obj.turn = ['    ' for i in range(1, len(init_obj.combatant_dict) + 1)]
-        init_obj.tracker = build_init_table(init_obj.combatant_dict, init_obj.turn)
+        init_obj.tracker = init_obj.build_init_table()
         db_insert = [(k, v) for k, v in init_obj.combatant_dict.items()]
         c.executemany('''INSERT OR REPLACE INTO initiative(name, init) VALUES(?,?)''', db_insert)
         bot_db.commit()
@@ -184,15 +208,17 @@ async def npc(ctx, npc_name: str, init_bonus: int = 0):
                 init_obj.tracker[init_obj.tracker.index(sublist)][0] = '--->'
                 init_obj.turn[init_obj.tracker.index(sublist)] = '--->'
         await ctx.send(f"Adding {npc_name} to active combat round.\n"
-                       f"Initiative is ({initiative}+{init_bonus}) {init_obj.combatant_dict[npc_name]}.")
+                       f"Initiative is ({initiative}+{init_bonus}) "
+                       f"{init_obj.combatant_dict[npc_name]}.")
     elif npc_name in init_obj.combatant_dict:
         await ctx.send(f"{npc_name} is already used in the initiative order.")
     else:
         initiative = die_roll(1, 20)[1]
         init_obj.combatant_dict[npc_name] = initiative + init_bonus
         init_obj.turn = ['    ' for i in range(1, len(init_obj.combatant_dict) + 1)]
-        init_obj.tracker = build_init_table(init_obj.combatant_dict, init_obj.turn)
-        await ctx.send(f"{npc_name}'s Initiative is ({initiative}+{init_bonus}) {init_obj.combatant_dict[npc_name]}.")
+        init_obj.tracker = init_obj.build_init_table()
+        await ctx.send(f"{npc_name}'s Initiative is ({initiative}+{init_bonus}) "
+                       f"{init_obj.combatant_dict[npc_name]}.")
 
 
 @dm.command(help="Allows DM to manipulate the Escalation Die.  Value can be plus or minus.")
@@ -210,8 +236,7 @@ async def escalate(ctx, value_change: int):
 async def dm_delay(ctx, npc_name: str, new_init: int):
     for sublist in init_obj.tracker:
         if '--->' in sublist:
-            npc_turn = init_obj.it_tracker[init_obj.tracker.index(sublist)][1]
-            break
+            npc_turn = init_obj.tracker[init_obj.tracker.index(sublist)][1]
         else:
             npc_turn = ''
     if init_obj.tracker_active is False:
@@ -222,11 +247,11 @@ async def dm_delay(ctx, npc_name: str, new_init: int):
         await ctx.send(f"Delay should be done on the NPCs turn.")
     else:
         init_obj.combatant_dict[npc_name] = new_init
-        init_obj.tracker = build_init_table(init_obj.combatant_dict, init_obj.turn)
+        init_obj.tracker = init_obj.build_init_table()
         db_insert = [(k, v) for k, v in init_obj.combatant_dict.items()]
         c.executemany('''INSERT OR REPLACE INTO initiative(name, init) VALUES(?,?)''', db_insert)
         bot_db.commit()
-        embed = init_embed_template(init_obj.tracker)
+        embed = init_obj.embed_template()
         await ctx.send(
             f"Initiative for {npc_name} has been delayed to {init_obj.combatant_dict[npc_name]}. "
             f"Initiative order has been recalculated", embed=embed)
@@ -246,14 +271,16 @@ async def remove(ctx, name: str):
             if '--->' in sublist:
                 active_user = init_obj.tracker[init_obj.tracker.index(sublist)][1]
         if active_user == name:
-            await ctx.send(f"{name} is the active combatant, please advance the turn before removing them.")
+            await ctx.send(f"{name} is the active combatant, "
+                           f"please advance the turn before removing them.")
         else:
             del init_obj.combatant_dict[name]
             init_obj.turn = ['    ' for i in range(1, len(init_obj.combatant_dict) + 1)]
-            init_obj.tracker = build_init_table(init_obj.combatant_dict, init_obj.turn)
+            init_obj.tracker = init_obj.build_init_table()
             db_insert = [(k, v) for k, v in init_obj.combatant_dict.items()]
             c.execute('''DELETE from initiative''')
-            c.executemany('''INSERT OR REPLACE INTO initiative(name, init) VALUES(?,?)''', db_insert)
+            c.executemany('''INSERT OR REPLACE INTO initiative(name, init) VALUES(?,?)''',
+                          db_insert)
             bot_db.commit()
             for sublist in init_obj.tracker:
                 if active_user in sublist:
@@ -264,14 +291,14 @@ async def remove(ctx, name: str):
     else:
         del init_obj.combatant_dict[name]
         init_obj.turn = ['    ' for i in range(1, len(init_obj.combatant_dict) + 1)]
-        init_obj.tracker = build_init_table(init_obj.combatant_dict, init_obj.nit_turn)
+        init_obj.tracker = init_obj.build_init_table()
         await ctx.send(
             f"{name} has been removed from the initiative table.")
 
 
 @dm.command(help='Allows DM to manually update an NPC or player\'s init score.  '
-                 'Specified name for NPCs is case sensitive, use "" around the name if it includes spaces.  '
-                 'Players must be @ mentioned.')
+                 'Specified name for NPCs is case sensitive, use "" around the name '
+                 'if it includes spaces.  Players must be @ mentioned.')
 async def update(ctx, name: str, new_init: int):
     if "!" and "@" in name:
         mention_user = name.replace("<", "").replace(">", "").replace("@", "").replace("!", "")
@@ -280,11 +307,11 @@ async def update(ctx, name: str, new_init: int):
         await ctx.send(f"{name} is not in the initiative order.")
     elif init_obj.tracker_active is False:
         init_obj.combatant_dict[name] = new_init
-        init_obj.tracker = build_init_table(init_obj.combatant_dict, init_obj.turn)
+        init_obj.tracker = init_obj.build_init_table()
         await ctx.send(f"{name}'s initiative has been manually set to {new_init}.")
     else:
         init_obj.combatant_dict[name] = new_init
-        init_obj.tracker = build_init_table(init_obj.combatant_dict, init_obj.turn)
+        init_obj.tracker = init_obj.build_init_table()
         db_insert = [(k, v) for k, v in init_obj.combatant_dict.items()]
         c.executemany('''INSERT OR REPLACE INTO initiative(name, init) VALUES(?,?)''', db_insert)
         bot_db.commit()
@@ -293,9 +320,6 @@ async def update(ctx, name: str, new_init: int):
 
 @dm.command(help='Allows DM to manually change who is the active combatant.')
 async def active(ctx, name: str):
-    global init_turn
-    global init_tracker
-    global init_active
     if "!" and "@" in name:
         mention_user = name.replace("<", "").replace(">", "").replace("@", "").replace("!", "")
         name = ctx.guild.get_member(int(mention_user)).display_name
@@ -306,8 +330,8 @@ async def active(ctx, name: str):
         for sublist in init_obj.tracker:
             if name in sublist:
                 init_obj.turn[init_obj.tracker.index(sublist)] = '--->'
-                init_obj.tracker = build_init_table(init_obj.combatant_dict, init_obj.turn)
-        embed = init_embed_template(init_obj.tracker)
+                init_obj.tracker = init_obj.build_init_table()
+        embed = init_obj.embed_template()
         await ctx.send(f"{name} is now the active combatant.", embed=embed)
 
 
@@ -320,25 +344,10 @@ async def rebuild(ctx):
     all_rows = c.fetchall()
     init_obj.combatant_dict = {i[0]: i[1] for i in all_rows}
     init_obj.turn = ['    ' for i in range(1, len(init_obj.combatant_dict) + 1)]
-    init_obj.tracker = build_init_table(init_obj.combatant_dict, init_obj.turn)
-    embed = init_embed_template(init_obj.tracker)
-    await ctx.send(f"Initiative tracker has been reset and rebuilt from the backup database.", embed=embed)
-
-
-def build_init_table(init_dictionary, turn_order):
-    init_sorted = {k: v for k, v in sorted(init_dictionary.items(), key=lambda i: i[1], reverse=True)}
-    table = [[k, init_sorted[k]] for k in init_sorted]
-    for item in table:
-        item.insert(0, turn_order[table.index(item)])
-    return table
-
-
-def init_embed_template(tracker):
-    tab_tracker = tabulate(tracker, headers=["Active", "Player", "Initiative"], tablefmt="fancy_grid")
-    embed_template = discord.Embed(title=f"Initiative Order:", description=f'```{tab_tracker}```', color=0xff0000)
-    embed_template.add_field(name="Tracker Active", value=f"{init_obj.tracker_active}")
-    embed_template.add_field(name="Escalation Die", value=f"{init_obj.escalation}")
-    return embed_template
+    init_obj.tracker = init_obj.build_init_table()
+    embed = init_obj.embed_template()
+    await ctx.send(f"Initiative tracker has been reset and rebuilt from the backup database.",
+                   embed=embed)
 
 
 @dm.error
@@ -398,7 +407,8 @@ async def roll(ctx, *, dice_roll: str):
         await ctx.send(f"Dice rolls should be in the format: NdN+N")
 
 
-@bot.command(help="Rolls 1d20 + supplied player bonus(Stat + Level) to attack, command automatically includes "
+@bot.command(help="Rolls 1d20 + supplied player bonus(Stat + Level) "
+                  "to attack, command automatically includes "
                   "escalation die(if any). Default bonus = 0")
 async def attack(ctx, bonus: int = 0):
     crit = ":x:"
@@ -414,14 +424,24 @@ async def attack(ctx, bonus: int = 0):
     attack_embed = discord.Embed(title=f"__**Attack Result**__",
                                  description=f"{attack_modified}\n{math}",
                                  color=0x0000ff)
-    attack_embed.add_field(name="Natural Roll", value=f"{attack_natural}", inline=False)
-    attack_embed.add_field(name="Natural Crit", value=f"{crit}", inline=True)
-    attack_embed.add_field(name="Element Crit", value=f"{vuln_crit}", inline=True)
-    attack_embed.add_field(name="Escalation", value=f"{init_obj.escalation}", inline=True)
-    await ctx.send(f"{ctx.author.mention} rolled to attack.", embed=attack_embed)
+    attack_embed.add_field(name="Natural Roll",
+                           value=f"{attack_natural}",
+                           inline=False)
+    attack_embed.add_field(name="Natural Crit",
+                           value=f"{crit}",
+                           inline=True)
+    attack_embed.add_field(name="Element Crit",
+                           value=f"{vuln_crit}",
+                           inline=True)
+    attack_embed.add_field(name="Escalation",
+                           value=f"{init_obj.escalation}",
+                           inline=True)
+    await ctx.send(f"{ctx.author.mention} rolled to attack.",
+                   embed=attack_embed)
 
 
-@bot.command(help="Roll 1d20 + supplied NPC bonus to attack, excludes escalation die. Default bonus = 0")
+@bot.command(help="Roll 1d20 + supplied NPC bonus to attack, "
+                  "excludes escalation die. Default bonus = 0")
 async def attacknpc(ctx, bonus: int = 0):
     crit = ":x:"
     vuln_crit = ":x:"
@@ -436,11 +456,19 @@ async def attacknpc(ctx, bonus: int = 0):
     attack_embed = discord.Embed(title=f"__**Attack Result**__",
                                  description=f"{attack_modified}\n{math}",
                                  color=0x0000ff)
-    attack_embed.add_field(name="Natural Roll", value=f"{attack_natural}", inline=False)
-    attack_embed.add_field(name="Natural Crit", value=f"{crit}", inline=True)
-    attack_embed.add_field(name="Element Crit", value=f"{vuln_crit}", inline=True)
-    attack_embed.add_field(name="Escalation", value=f"N/A", inline=True)
-    await ctx.send(f"{ctx.author.mention} rolled an **NPC attack**.", embed=attack_embed)
+    attack_embed.add_field(name="Natural Roll",
+                           value=f"{attack_natural}",
+                           inline=False)
+    attack_embed.add_field(name="Natural Crit",
+                           value=f"{crit}", inline=True)
+    attack_embed.add_field(name="Element Crit",
+                           value=f"{vuln_crit}",
+                           inline=True)
+    attack_embed.add_field(name="Escalation",
+                           value=f"N/A",
+                           inline=True)
+    await ctx.send(f"{ctx.author.mention} rolled an **NPC attack**.",
+                   embed=attack_embed)
 
 
 # =========================================================
@@ -499,18 +527,21 @@ async def nextgame(ctx):
 @nextgame.group(help="Commands to schedule when the next game is.")
 async def schedule(ctx):
     if ctx.invoked_subcommand is None:
-        await ctx.send(f"Additional arguments requires, see **{ctx.prefix}help next schedule** for available options.")
+        await ctx.send(f"Additional arguments requires, see **{ctx.prefix}help next schedule** "
+                       f"for available options.")
 
 
-@schedule.command(help="Sets the default date/time for the next game. Same bat time, 14 days from today.")
+@schedule.command(help="Sets the default date/time for the next game. "
+                       "Same bat time, 14 days from today.")
 async def default(ctx):
     # Default time is 1PM Mountain time, every 2 weeks.  Change days and hours to update default.
     t = datetime.now().replace(hour=13, minute=0, second=0, microsecond=0)
     d = timedelta(days=14)
     default_date = t + d
     output_date = default_date.astimezone(GMT)
-    c.execute('''INSERT OR REPLACE INTO next_game(id, created_date, next_date) 
-                 VALUES(?,?,?)''', (1, datetime.today(), output_date.replace(tzinfo=None)))
+    c.execute(
+        '''INSERT OR REPLACE INTO next_game(id, created_date, next_date) VALUES(?,?,?)''',
+        (1, datetime.today(), output_date.replace(tzinfo=None)))
     bot_db.commit()
     nextgame_embed = nextgame_embed_template(default_date.astimezone(MT))
     await ctx.send(embed=nextgame_embed)
@@ -528,18 +559,20 @@ async def setdate(ctx, schedule_date: str = ""):
         await ctx.send("Please use the format: DD/MM/YYYY(EG: 05/31/2020)")
     else:
         output_date = datetime(2020, sch_month, sch_day, 19, 0, 0, 0, tzinfo=GMT)
-        c.execute('''INSERT OR REPLACE INTO next_game(id, created_date, next_date) 
-                         VALUES(?,?,?)''', (1, datetime.today(),
-                                            output_date.replace(tzinfo=None)))
+        c.execute(
+            '''INSERT OR REPLACE INTO next_game(id, created_date, next_date) VALUES(?,?,?)''',
+            (1, datetime.today(), output_date.replace(tzinfo=None)))
         bot_db.commit()
         nextgame_embed = nextgame_embed_template(output_date.astimezone(MT))
-        await ctx.send(f"Set next game date to {sch_day}/{sch_month}/{sch_year} at the default time.\n  "
-                       f"Use the **{ctx.prefix}next schedule time** command if you want to change the time.",
+        await ctx.send(f"Set next game date to {sch_day}/{sch_month}/{sch_year}"
+                       f" at the default time.\nUse the **{ctx.prefix}next schedule time** "
+                       f"command if you want to change the time.",
                        embed=nextgame_embed)
 
 
 @schedule.command(name="time",
-                  help="Sets the time of the next game, in 24 hour time with timezone. Format=HH:MM TZ")
+                  help="Sets the time of the next game, in 24 hour time with timezone. "
+                       "Format=HH:MM TZ")
 async def settime(ctx, schedule_time: str, schedule_tz: str):
     sch_hour, sch_minute = [int(i) for i in schedule_time.split(":")]
     if (sch_hour > 24) or (sch_minute > 59):
@@ -559,8 +592,10 @@ async def settime(ctx, schedule_time: str, schedule_tz: str):
         ng = c.fetchone()
         output_date = ng[0].replace(hour=sch_hour, minute=sch_minute, microsecond=0, second=0,
                                     tzinfo=time_zone).astimezone(GMT)
-        c.execute('''INSERT OR REPLACE INTO next_game(id, created_date, next_date) 
-                                 VALUES(?,?,?)''', (1, datetime.today(), output_date.replace(tzinfo=None)))
+        c.execute(
+            '''INSERT OR REPLACE INTO next_game(id, created_date, next_date) VALUES(?,?,?)''',
+            (1, datetime.today(),
+             output_date.replace(tzinfo=None)))
         bot_db.commit()
         nextgame_embed = nextgame_embed_template(output_date.astimezone(MT))
         await ctx.send(f"Next game time successfully set.", embed=nextgame_embed)
@@ -590,13 +625,17 @@ def nextgame_embed_template(input_date):
     hours, remainder = divmod(time_until.seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
     output_embed = discord.Embed(title=f"__**Next Scheduled Game**__",
-                                 description=f"Time until next game: {days} Days, {hours} Hours, {minutes} Minutes")
+                                 description=f"Time until next game: "
+                                             f"{days} Days, {hours} Hours, {minutes} Minutes")
     output_embed.add_field(name="__Eastern Time__",
-                           value=f"{input_date.astimezone(ET).strftime('%d/%m/%Y %H:%M')}", inline=False)
+                           value=f"{input_date.astimezone(ET).strftime('%d/%m/%Y %H:%M')}",
+                           inline=False)
     output_embed.add_field(name="__Mountain Time__",
-                           value=f"{input_date.astimezone(MT).strftime('%d/%m/%Y %H:%M')}", inline=False)
+                           value=f"{input_date.astimezone(MT).strftime('%d/%m/%Y %H:%M')}",
+                           inline=False)
     output_embed.add_field(name="__Pacific Time__",
-                           value=f"{input_date.astimezone(PT).strftime('%d/%m/%Y %H:%M')}", inline=False)
+                           value=f"{input_date.astimezone(PT).strftime('%d/%m/%Y %H:%M')}",
+                           inline=False)
     return output_embed
 
 
@@ -682,8 +721,7 @@ async def on_ready():
 if __name__ == "__main__":
     init_obj = InitiativeTrack()
     bot_db = sqlite3.connect('data/discordbot.sql',
-                             detect_types=sqlite3.PARSE_DECLTYPES
-                                          | sqlite3.PARSE_COLNAMES)
+                             detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
     c = bot_db.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS next_game
               (id INTEGER PRIMARY KEY, created_date timestamp, next_date timestamp)''')
