@@ -1,5 +1,5 @@
 # soulbot-discord
-Simple Discord bot for my 13th Age RPG group.
+Discord bot for my 13th Age RPG group.
 
 A work in progress I made for my group, with no warranty implied or expressed.  I'm not a professional developer, so it's likely rough AF, but it works.  I usually squash bugs as my group finds them, if you find something feel free to submit a bug report on github.
 

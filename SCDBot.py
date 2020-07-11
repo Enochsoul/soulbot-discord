@@ -11,16 +11,9 @@ import time
 
 load_dotenv()
 
+token = os.getenv('DISCORD_TOKEN')
 
-class Settings:
-    def __init__(self):
-        self.token = os.getenv('DISCORD_TOKEN')
-        self.command_prefix = os.getenv('COMMAND_PREFIX')
-
-
-config = Settings()
-
-bot = commands.Bot(command_prefix=config.command_prefix)
+bot = commands.Bot(command_prefix=os.getenv('COMMAND_PREFIX'))
 
 
 @bot.command(help="Changes the bot command prefix.")
@@ -730,4 +723,4 @@ if __name__ == "__main__":
     c.execute('''CREATE TABLE IF NOT EXISTS initiative
               (name TEXT UNIQUE PRIMARY KEY, init INTEGER)''')
     bot_db.commit()
-    bot.run(config.token)
+    bot.run(token)
