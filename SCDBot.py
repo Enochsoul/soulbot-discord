@@ -382,22 +382,19 @@ async def roll(ctx, *, dice_roll: str):
     plus_modifier_pattern = "[0-9]+d[0-9]+\\+[0-9]+"
     minus_modifier_pattern = "[0-9]+d[0-9]+\\-[0-9]+"
     normal_pattern = "[0-9]+d[0-9]+"
-    plus_match_with_modifier = bool(re.fullmatch(plus_modifier_pattern, dice_roll))
-    minus_match_with_modifier = bool(re.fullmatch(minus_modifier_pattern, dice_roll))
-    match_without_modifier = bool(re.fullmatch(normal_pattern, dice_roll))
-    if plus_match_with_modifier:
+    if re.fullmatch(plus_modifier_pattern, dice_roll):
         modifier = int(dice_roll.split("+")[1])
         dice = dice_roll.split("+")[0]
         result_list, result_total = die_roll(int(dice.split("d")[0]), int(dice.split("d")[1]))
         await ctx.send(f"{ctx.author.mention} rolled **{result_total + modifier}**."
                        f" ({result_list}+{modifier})")
-    elif minus_match_with_modifier:
+    elif re.fullmatch(minus_modifier_pattern, dice_roll):
         modifier = int(dice_roll.split("-")[1])
         dice = dice_roll.split("-")[0]
         result_list, result_total = die_roll(int(dice.split("d")[0]), int(dice.split("d")[1]))
         await ctx.send(f"{ctx.author.mention} rolled **{result_total - modifier}**."
                        f" ({result_list}-{modifier})")
-    elif match_without_modifier:
+    elif re.fullmatch(normal_pattern, dice_roll):
         dice = dice_roll.split("+")[0]
         result_list, result_total = die_roll(int(dice.split("d")[0]), int(dice.split("d")[1]))
         if int(dice.split("d")[0]) == 1:
@@ -498,7 +495,7 @@ async def quote(ctx):
             await ctx.send(f"No quotes in the database.")
 
 
-@quote.group(name="addquote", help="Add a quote to the database.")
+@quote.group(name="add", help="Add a quote to the database.")
 async def add_quote(ctx, *, quote_text: str):
     c.execute('''INSERT INTO quotes(quote) VALUES(?)''', (quote_text,))
     bot_db.commit()
