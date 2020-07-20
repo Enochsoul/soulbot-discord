@@ -49,10 +49,13 @@ class InitiativeTrack:
         self.escalation = 0
 
     def build_init_table(self):
+        # The combatant dict isn't sorted, create a sorted dict here.
         init_sorted = {k: v for k, v in sorted(self.combatant_dict.items(),
                                                key=lambda i: i[1],
                                                reverse=True)}
+        # Create a list of lists from the sorted dict.
         table = [[k, init_sorted[k]] for k in init_sorted]
+        # Insert the turn markers to the 0th index of each sub-list.
         for item in table:
             item.insert(0, self.turn[table.index(item)])
         return table
