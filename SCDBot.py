@@ -359,7 +359,11 @@ async def on_dm_error(ctx, error):
         await ctx.send(f"Something went wrong, check the bot output.")
     elif isinstance(error, commands.errors.MissingRequiredArgument):
         print(error)
-        await ctx.send(f"Missing required arguments, please check help for command syntax.")
+        await ctx.send(f"Missing required arguments, please check **{ctx.prefix}help "
+                       f"{ctx.invoked_with}** for command syntax.")
+    else:
+        print(error)
+        await ctx.send('A unknown error has occurred, do you know where your towel is?')
 
 
 @init_roll.error
@@ -468,9 +472,18 @@ async def attacknpc(ctx, bonus: int = 0):
                    embed=attack_embed)
 
 
+@attack.error
+@attacknpc.error
+async def on_attack_error(ctx, error):
+    if isinstance(error, commands.BadArgument):
+        await ctx.send(f'Invalid attack bonus, please check **{ctx.prefix}help '
+                       f'{ctx.invoked_with}** for command syntax.')
+
+
 # =========================================================
 # Quotes
 # =========================================================
+
 
 @bot.group(help="Display a random quote submitted to the database, or one containing .")
 async def quote(ctx):
