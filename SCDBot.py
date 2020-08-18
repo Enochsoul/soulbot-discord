@@ -8,6 +8,7 @@ from tabulate import tabulate
 import sqlite3
 from datetime import datetime, tzinfo, timedelta
 import time
+import requests
 
 load_dotenv()
 
@@ -536,9 +537,22 @@ async def quote_search(ctx, *, search_term: str):
         await ctx.send(f'No quote found with the term "{search_term}"')
 
 
+@bot.command(help="Very Vahti like.", name='vahti', case_insensitive=True)
+async def whale(ctx):
+    response = requests.get('https://sv443.net/jokeapi/v2/joke/Pun'
+                            '?blacklistFlags=nsfw,religious,political,racist,sexist',
+                            headers={'Accept': 'application/json'})
+    output = response.json()
+    if output['type'] == 'twopart':
+        await ctx.send(f"\n{output['setup']}\n\n{output['delivery']}")
+    else:
+        await ctx.send(f"{output['joke']}")
+
+
 # =========================================================
 # Next Game
 # =========================================================
+
 
 @bot.group(name="next", help="Prints out the date of the next game.")
 async def nextgame(ctx):
