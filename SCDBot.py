@@ -416,14 +416,17 @@ async def roll(ctx, *, dice_roll: str):
                   "escalation die(if any). Default bonus = 0")
 async def attack(ctx, bonus: int = 0):
     crit = ":x:"
-    vuln_crit = ":x:"
+    crit_range_plus2 = ":x:"
+    crit_range_plus4 = ":x:"
     attack_roll = die_roll(1, 20)
     attack_natural = attack_roll[1]
     attack_modified = attack_natural + bonus + init_obj.escalation
     if attack_natural == 20:
         crit = ":white_check_mark:"
     if attack_natural >= 18:
-        vuln_crit = ":white_check_mark:"
+        crit_range_plus2 = ":white_check_mark:"
+    if attack_natural >= 16:
+        crit_range_plus4 = ":white_check_mark:"
     math = f"|| ({attack_natural} + {bonus} + {init_obj.escalation} = {attack_modified}) ||"
     attack_embed = discord.Embed(title=f"__**Attack Result**__",
                                  description=f"{attack_modified}\n{math}",
@@ -434,12 +437,14 @@ async def attack(ctx, bonus: int = 0):
     attack_embed.add_field(name="Natural Crit",
                            value=f"{crit}",
                            inline=True)
-    attack_embed.add_field(name="Element Crit",
-                           value=f"{vuln_crit}",
+    attack_embed.add_field(name="+2 Crit Range",
+                           value=f"{crit_range_plus2}",
+                           inline=True)
+    attack_embed.add_field(name="+4 Crit Range",
+                           value=f"{crit_range_plus4}",
                            inline=True)
     attack_embed.add_field(name="Escalation",
-                           value=f"{init_obj.escalation}",
-                           inline=True)
+                           value=f"{init_obj.escalation}")
     await ctx.send(f"{ctx.author.mention} rolled to attack.",
                    embed=attack_embed)
 
@@ -448,14 +453,17 @@ async def attack(ctx, bonus: int = 0):
                   "excludes escalation die. Default bonus = 0")
 async def attacknpc(ctx, bonus: int = 0):
     crit = ":x:"
-    vuln_crit = ":x:"
+    crit_range_plus2 = ":x:"
+    crit_range_plus4 = ":x:"
     attack_roll = die_roll(1, 20)
     attack_natural = attack_roll[1]
     attack_modified = attack_natural + bonus
     if attack_natural == 20:
         crit = ":white_check_mark:"
     if attack_natural >= 18:
-        vuln_crit = ":white_check_mark:"
+        crit_range_plus2 = ":white_check_mark:"
+    if attack_natural >= 16:
+        crit_range_plus4 = ":white_check_mark:"
     math = f"|| ({attack_natural} + {bonus} = {attack_modified}) ||"
     attack_embed = discord.Embed(title=f"__**Attack Result**__",
                                  description=f"{attack_modified}\n{math}",
@@ -465,12 +473,14 @@ async def attacknpc(ctx, bonus: int = 0):
                            inline=False)
     attack_embed.add_field(name="Natural Crit",
                            value=f"{crit}", inline=True)
-    attack_embed.add_field(name="Element Crit",
-                           value=f"{vuln_crit}",
+    attack_embed.add_field(name="+2 Crit Range",
+                           value=f"{crit_range_plus2}",
+                           inline=True)
+    attack_embed.add_field(name="+4 Crit Range",
+                           value=f"{crit_range_plus4}",
                            inline=True)
     attack_embed.add_field(name="Escalation",
-                           value=f"N/A",
-                           inline=True)
+                           value=f"N/A")
     await ctx.send(f"{ctx.author.mention} rolled an **NPC attack**.",
                    embed=attack_embed)
 
