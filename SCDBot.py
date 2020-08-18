@@ -25,9 +25,16 @@ async def setprefix(ctx, prefix: str):
 
 
 @setprefix.error
-async def on_message_error(ctx, error):
+async def on_prefix_error(ctx, error):
     if isinstance(error, commands.MissingPermissions):
         await ctx.send(f"{error}")
+
+
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.errors.CommandNotFound):
+        await ctx.send(f"{ctx.prefix}{ctx.invoked_with} is not a valid command.  "
+                       f"See **{ctx.prefix}help** for available commands.")
 
 
 # =========================================================
