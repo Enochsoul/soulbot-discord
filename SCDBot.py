@@ -188,6 +188,9 @@ async def dm(ctx):
 
 @dm.command(help="Add NPCs/Monsters to the initiative order, before or during active combat.")
 async def npc(ctx, npc_name: str, init_bonus: int = 0):
+    if "!" and "@" in npc_name:
+        mention_user = npc_name.replace("<", "").replace(">", "").replace("@", "").replace("!", "")
+        npc_name = ctx.guild.get_member(int(mention_user)).display_name
     for sublist in init_obj.tracker:
         if '--->' in sublist:
             player_turn = init_obj.tracker[init_obj.tracker.index(sublist)][1]
@@ -230,6 +233,9 @@ async def escalate(ctx, value_change: int):
 
 @dm.command(name='delay', help="Allows DM to delay NPC/Monster turns.")
 async def dm_delay(ctx, npc_name: str, new_init: int):
+    if "!" and "@" in npc_name:
+        mention_user = npc_name.replace("<", "").replace(">", "").replace("@", "").replace("!", "")
+        npc_name = ctx.guild.get_member(int(mention_user)).display_name
     for sublist in init_obj.tracker:
         if '--->' in sublist:
             npc_turn = init_obj.tracker[init_obj.tracker.index(sublist)][1]
