@@ -9,10 +9,12 @@ import sqlite3
 from datetime import datetime, tzinfo, timedelta
 import time
 import requests
+import statistics
 
 load_dotenv()
 
 token = os.getenv('DISCORD_TOKEN')
+random_org_apikey = os.getenv('RANDOM_ORG_API')
 
 bot = commands.Bot(command_prefix=os.getenv('COMMAND_PREFIX'))
 
@@ -419,6 +421,34 @@ async def roll(ctx, *, dice_roll: str):
         await ctx.send(f"Dice rolls should be in the format: NdN+N")
 
 
+@bot.command(help="Experimental Dice roller.  Expected format: NdN+N.(Ex: 2d6+2)")
+async def rollexp(ctx, *, dice_roll: str):
+    plus_modifier_pattern = "[0-9]+d[0-9]+\\+[0-9]+"
+    minus_modifier_pattern = "[0-9]+d[0-9]+\\-[0-9]+"
+    normal_pattern = "[0-9]+d[0-9]+"
+    if re.fullmatch(plus_modifier_pattern, dice_roll):
+        modifier = int(dice_roll.split("+")[1])
+        dice = dice_roll.split("+")[0]
+        result_list, result_total = die_roll_exp(int(dice.split("d")[0]), int(dice.split("d")[1]))
+        await ctx.send(f"{ctx.author.mention} rolled **{result_total + modifier}**."
+                       f" ({result_list}+{modifier})")
+    elif re.fullmatch(minus_modifier_pattern, dice_roll):
+        modifier = int(dice_roll.split("-")[1])
+        dice = dice_roll.split("-")[0]
+        result_list, result_total = die_roll_exp(int(dice.split("d")[0]), int(dice.split("d")[1]))
+        await ctx.send(f"{ctx.author.mention} rolled **{result_total - modifier}**."
+                       f" ({result_list}-{modifier})")
+    elif re.fullmatch(normal_pattern, dice_roll):
+        dice = dice_roll.split("+")[0]
+        result_list, result_total = die_roll_exp(int(dice.split("d")[0]), int(dice.split("d")[1]))
+        if int(dice.split("d")[0]) == 1:
+            await ctx.send(f"{ctx.author.mention} rolled **{result_total}**.")
+        else:
+            await ctx.send(f"{ctx.author.mention} rolled **{result_total}**. ({result_list})")
+    else:
+        await ctx.send(f"Dice rolls should be in the format: NdN+N")
+
+
 @bot.command(help="Rolls 1d20 + supplied player bonus(Stat + Level) "
                   "to attack, command automatically includes "
                   "escalation die(if any). Default bonus = 0")
@@ -716,6 +746,15 @@ async def on_setdate_error(ctx, error):
 
 
 def die_roll(die_count, die_size):
+    """Used for generating random numbers for dice rolling.
+
+    :param die_count: Number of random integers to generate.
+    :type die_count: int
+    :param die_size: Max value of random number generated.
+    :type die_size: int
+    :return: List of individual results and sum of results.
+    :rtype: (list, int)
+    """
     count = die_count
     result = []
     while count > 0:
@@ -724,6 +763,40 @@ def die_roll(die_count, die_size):
     total = sum(result)
     bold_item = [f"**{item}**" if item == die_size else str(item) for item in result]
     result_list = "+".join(bold_item)
+    print(f"Normal roll Variance value: {statistics.variance(result)}")
+    print(f"Normal roll Mean value: {statistics.mean(result)}")
+    return result_list, total
+
+
+def die_roll_exp(die_count, die_size):
+    """Used for generating random numbers from random.org's APi for dice rolling.
+
+    :param die_count: Number of random integers to generate.
+    :type die_count: int
+    :param die_size: Max value of random number generated.
+    :type die_size: int
+    :return: List of individual results and sum of results.
+    :rtype: (list, int)
+    """
+    json_body = {
+        "jsonrpc": "2.0",
+        "method": "generateIntegers",
+        "params": {
+            "apiKey": random_org_apikey,
+            "n": die_count,
+            "min": 1,
+            "max": die_size,
+            "replacement": True
+        },
+        "id": 1337
+    }
+    response = requests.post('https://api.random.org/json-rpc/2/invoke', json=json_body)
+    result = response.json()['result']['random']['data']
+    total = sum(result)
+    bold_item = [f"**{item}**" if item == die_size else str(item) for item in result]
+    result_list = "+".join(bold_item)
+    print(f"Exp roll Variance value: {statistics.variance(result)}")
+    print(f"Exp roll Mean value: {statistics.mean(result)}")
     return result_list, total
 
 

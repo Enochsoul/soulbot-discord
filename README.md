@@ -34,6 +34,8 @@ EG:
     - DM can directly change who has the active turn.
     - Initiative database written to disk, recoverable with DM command if there are bot issues.
 - Dice Roller(In the format of NdN+N with highlighting of natural max rolls.  No rerolls or dice popping)
+- Experimental Dice Roller based on the random.org API.
+    - You'll need your own API key from them put into the .env file as RANDOM_ORG_API for this to work.
 - Attack dice roller, rolls 1d20 plus supplied player bonus.  Adds escalation dice automatically, and breaks out natural roll value.
 - Next Game schedule:
     - Shows when the next game is in several different timezones, and time until the next game.
@@ -42,4 +44,3 @@ EG:
     - Add quotations to the database.
     - Recall random quotations from the database.
     - Search for text and display a random quote with matching text.
-    
