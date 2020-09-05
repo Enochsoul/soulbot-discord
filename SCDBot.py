@@ -764,8 +764,6 @@ def die_roll_old(die_count, die_size):
     total = sum(result)
     bold_item = [f"**{item}**" if item == die_size else str(item) for item in result]
     result_list = "+".join(bold_item)
-    print(f"Normal roll Variance value: {statistics.variance(result)}")
-    print(f"Normal roll Mean value: {statistics.mean(result)}")
     return result_list, total
 
 
@@ -796,8 +794,6 @@ def die_roll(die_count, die_size):
     total = sum(result)
     bold_item = [f"**{item}**" if item == die_size else str(item) for item in result]
     result_list = "+".join(bold_item)
-    print(f"Exp roll Variance value: {statistics.variance(result)}")
-    print(f"Exp roll Mean value: {statistics.mean(result)}")
     return result_list, total
 
 
