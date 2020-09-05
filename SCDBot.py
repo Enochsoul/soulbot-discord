@@ -1,15 +1,16 @@
 import os
-import random
 import re
+import time
+import random
+import sqlite3
+import statistics
+from datetime import datetime, tzinfo, timedelta
+
 import discord
+import requests
 from discord.ext import commands, tasks
 from dotenv import load_dotenv, set_key
 from tabulate import tabulate
-import sqlite3
-from datetime import datetime, tzinfo, timedelta
-import time
-import requests
-import statistics
 
 load_dotenv()
 
@@ -745,7 +746,7 @@ async def on_setdate_error(ctx, error):
 # =========================================================
 
 
-def die_roll(die_count, die_size):
+def die_roll_old(die_count, die_size):
     """Used for generating random numbers for dice rolling.
 
     :param die_count: Number of random integers to generate.
@@ -768,7 +769,7 @@ def die_roll(die_count, die_size):
     return result_list, total
 
 
-def die_roll_exp(die_count, die_size):
+def die_roll(die_count, die_size):
     """Used for generating random numbers from random.org's APi for dice rolling.
 
     :param die_count: Number of random integers to generate.
