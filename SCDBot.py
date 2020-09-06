@@ -3,7 +3,6 @@ import re
 import time
 import random
 import sqlite3
-import statistics
 from datetime import datetime, tzinfo, timedelta
 
 import discord
