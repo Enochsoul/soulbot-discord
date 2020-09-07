@@ -37,6 +37,10 @@ EG:
 - Experimental Dice Roller based on the random.org API.
     - You'll need your own API key from them put into the .env file as RANDOM_ORG_API for this to work.
 - Attack dice roller, rolls 1d20 plus supplied player bonus.  Adds escalation dice automatically, and breaks out natural roll value.
+- Tools for Chaos Mages(13th Age specific, you'll still need the book).
+    - Tracks each Chaos Mage player's spell determination pool separately if there are multiple.
+    - Tracks as described under Chaos Magic Categories(pg15 13TW), with 'Stones' in a pool.  Command draws randomly out of the pool, which is refilled automatically when only one option is left.
+    - Command to randomly draw an element for Chaos Mages with one or more Warp Talents.
 - Next Game schedule:
     - Shows when the next game is in several different timezones, and time until the next game.
     - Toggleable next game @mention announcement in the last hour before the game.
