@@ -419,34 +419,6 @@ async def roll(ctx, *, dice_roll: str):
         await ctx.send(f"Dice rolls should be in the format: NdN+N")
 
 
-@bot.command(help="Experimental Dice roller.  Expected format: NdN+N.(Ex: 2d6+2)")
-async def rollexp(ctx, *, dice_roll: str):
-    plus_modifier_pattern = "[0-9]+d[0-9]+\\+[0-9]+"
-    minus_modifier_pattern = "[0-9]+d[0-9]+\\-[0-9]+"
-    normal_pattern = "[0-9]+d[0-9]+"
-    if re.fullmatch(plus_modifier_pattern, dice_roll):
-        modifier = int(dice_roll.split("+")[1])
-        dice = dice_roll.split("+")[0]
-        result_list, result_total = die_roll_exp(int(dice.split("d")[0]), int(dice.split("d")[1]))
-        await ctx.send(f"{ctx.author.mention} rolled **{result_total + modifier}**."
-                       f" ({result_list}+{modifier})")
-    elif re.fullmatch(minus_modifier_pattern, dice_roll):
-        modifier = int(dice_roll.split("-")[1])
-        dice = dice_roll.split("-")[0]
-        result_list, result_total = die_roll_exp(int(dice.split("d")[0]), int(dice.split("d")[1]))
-        await ctx.send(f"{ctx.author.mention} rolled **{result_total - modifier}**."
-                       f" ({result_list}-{modifier})")
-    elif re.fullmatch(normal_pattern, dice_roll):
-        dice = dice_roll.split("+")[0]
-        result_list, result_total = die_roll_exp(int(dice.split("d")[0]), int(dice.split("d")[1]))
-        if int(dice.split("d")[0]) == 1:
-            await ctx.send(f"{ctx.author.mention} rolled **{result_total}**.")
-        else:
-            await ctx.send(f"{ctx.author.mention} rolled **{result_total}**. ({result_list})")
-    else:
-        await ctx.send(f"Dice rolls should be in the format: NdN+N")
-
-
 @bot.command(help="Rolls 1d20 + supplied player bonus(Stat + Level) "
                   "to attack, command automatically includes "
                   "escalation die(if any). Default bonus = 0")
@@ -527,6 +499,69 @@ async def on_attack_error(ctx, error):
     if isinstance(error, commands.BadArgument):
         await ctx.send(f'Invalid attack bonus, please check **{ctx.prefix}help '
                        f'{ctx.invoked_with}** for command syntax.')
+
+
+# =========================================================
+# Chaos Mage Tracker
+# =========================================================
+
+def warp_element():
+    return random.choice(['Air', 'Fire', 'Water', 'Earth', 'Metal', 'Void'])
+
+
+class ChaosMageTracker:
+    def __init__(self):
+        self.mages = {}
+
+    def reset(self):
+        self.mages = {}
+
+    def refill(self, mage_name):
+        self.mages[mage_name] = ['**```ARM\nAttack\n```**', '**```ARM\nAttack\n```**',
+                                 '**```yaml\nDefense\n```**', '**```yaml\nDefense\n```**',
+                                 '**```CSS\nIconic\n```**', '**```CSS\nIconic\n```**']
+        random.shuffle(self.mages[mage_name])
+
+    def draw(self, mage_name):
+        random.shuffle(self.mages[mage_name])
+        return self.mages[mage_name].pop()
+
+
+@bot.group(name='chaos', casesensitive=False, help="Tools for Chaos Mages.  Each mage's pool is tracked separately.")
+async def chaos_main(ctx):
+    if ctx.invoked_subcommand is None:
+        await ctx.send(f"Additional arguments required, see "
+                       f"**{ctx.prefix}help chaos** for available options.")
+
+
+@chaos_main.command(help="Manually fills or refills a Chaos Mage's spell determination pool.")
+async def refill(ctx):
+    chaos_mages.refill(ctx.author.display_name)
+    await ctx.send(f"{ctx.author.mention}'s spell determination pool has been refilled.")
+
+
+@chaos_main.command(help="Draw a random spell type from your spell determination pool.")
+async def draw(ctx):
+    if ctx.author.display_name in chaos_mages.mages:
+        if len(chaos_mages.mages[ctx.author.display_name]) == 2:
+            spell_type = chaos_mages.draw(ctx.author.display_name)
+            chaos_mages.refill(ctx.author.display_name)
+            await ctx.send(f'{ctx.author.mention}, your next spell will be:'
+                           f'\n{spell_type}\n'
+                           f'That was your second last spell in the pool, it has automatically been refilled.')
+        else:
+            await ctx.send(f'{ctx.author.mention}, your next spell will be:'
+                           f'\n{chaos_mages.draw(ctx.author.display_name)}')
+    else:
+        chaos_mages.refill(ctx.author.display_name)
+        await ctx.send(f"{ctx.author.mention}'s pool was empty and has been filled. "
+                       f"Your next spell will be:"
+                       f'\n{chaos_mages.draw(ctx.author.display_name)}')
+
+
+@chaos_main.command(help='Determine warp element if you have the Warp Talents.')
+async def warp(ctx):
+    await ctx.send(f"{ctx.author.mention}, your warp element is: **{warp_element()}**")
 
 
 # =========================================================
@@ -800,6 +835,7 @@ async def on_ready():
 
 if __name__ == "__main__":
     init_obj = InitiativeTrack()
+    chaos_mages = ChaosMageTracker()
     bot_db = sqlite3.connect('data/discordbot.sql',
                              detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
     c = bot_db.cursor()
