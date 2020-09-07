@@ -5,6 +5,9 @@ A work in progress I made for my group, with no warranty implied or expressed.  
 
 Designed to run as a standalone bot for a single discord server.  If you invite it to multiple servers all activity will be shared, so don't do that.
 
+Two versions now, one using the local python random number generator for the dice roller(master branch), and one using the random.org API for random number generation(master-randomorg-api). 
+If you use the random.org version, you'll need to sign up on their site, get an API key and add a RANDOM_ORG_API value to the .env file.
+
 ### Install:
 1) git clone to your chosen location.
 2) create .env with your Discord bot token and default command prefix(can also be changed once the bot is active):
@@ -34,8 +37,6 @@ EG:
     - DM can directly change who has the active turn.
     - Initiative database written to disk, recoverable with DM command if there are bot issues.
 - Dice Roller(In the format of NdN+N with highlighting of natural max rolls.  No rerolls or dice popping)
-- Experimental Dice Roller based on the random.org API.
-    - You'll need your own API key from them put into the .env file as RANDOM_ORG_API for this to work.
 - Attack dice roller, rolls 1d20 plus supplied player bonus.  Adds escalation dice automatically, and breaks out natural roll value.
 - Next Game schedule:
     - Shows when the next game is in several different timezones, and time until the next game.
