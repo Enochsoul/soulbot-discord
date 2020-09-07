@@ -38,7 +38,7 @@ EG:
     - Initiative database written to disk, recoverable with DM command if there are bot issues.
 - Dice Roller(In the format of NdN+N with highlighting of natural max rolls.  No rerolls or dice popping)
 - Attack dice roller, rolls 1d20 plus supplied player bonus.  Adds escalation dice automatically, and breaks out natural roll value.
-- Tools for Chaos Mages(13th Age specific, you'll still need the book).
+- **NEW**Tools for Chaos Mages(13th Age specific, you'll still need the book).
     - Tracks each Chaos Mage player's spell determination pool separately if there are multiple.
     - Tracks as described under Chaos Magic Categories(pg15 13TW), with 'Stones' in a pool.  Command draws randomly out of the pool, which is refilled automatically when only one option is left.
     - Command to randomly draw an element for Chaos Mages with one or more Warp Talents.
