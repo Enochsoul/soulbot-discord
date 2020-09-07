@@ -13,7 +13,6 @@ from tabulate import tabulate
 load_dotenv()
 
 token = os.getenv('DISCORD_TOKEN')
-random_org_apikey = os.getenv('RANDOM_ORG_API')
 
 bot = commands.Bot(command_prefix=os.getenv('COMMAND_PREFIX'))
 
