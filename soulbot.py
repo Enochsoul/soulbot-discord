@@ -1,31 +1,24 @@
-import os
-import re
-import time
-import random
-import sqlite3
-from datetime import datetime, tzinfo, timedelta
+import json
 
-import discord
-from discord.ext import commands, tasks
-from dotenv import load_dotenv, set_key
-from tabulate import tabulate
+from discord.ext import commands
 
-load_dotenv()
-
-token = os.getenv('DISCORD_TOKEN')
-
-bot = commands.Bot(command_prefix=os.getenv('COMMAND_PREFIX'))
+with open('soulbot.conf', "r") as config:
+    bot_config = json.load(config)
+token = bot_config['discord_token']
+bot = commands.Bot(command_prefix=bot_config['command_prefix'])
 
 
-@bot.command(help="Changes the bot command prefix.")
+@bot.command(help="Changes the bot command prefix.", name='setprefix')
 @commands.has_guild_permissions(manage_guild=True)
-async def setprefix(ctx, prefix: str):
-    set_key('.env', 'COMMAND_PREFIX', prefix)
+async def set_prefix(ctx, prefix: str):
+    bot_config['command_prefix'] = prefix
     bot.command_prefix = prefix
+    with open('soulbot.conf', 'w') as outfile:
+        json.dump(bot_config, outfile)
     await ctx.send(f"Prefix now set to {prefix}.")
 
 
-@setprefix.error
+@set_prefix.error
 async def on_prefix_error(ctx, error):
     if isinstance(error, commands.MissingPermissions):
         await ctx.send(f"{error}")
@@ -48,4 +41,7 @@ async def on_ready():
 
 
 if __name__ == "__main__":
+    bot.load_extension('CogAdmin')
+    for cog in bot_config['load_cogs']:
+        bot.load_extension(f'cogs.{cog}')
     bot.run(token)
