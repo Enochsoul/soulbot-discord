@@ -30,7 +30,7 @@ class ChaosMageTracker:
 chaos_mages = ChaosMageTracker()
 
 
-class ChaosMageCommands(commands.Cog):
+class ChaosMageCommands(commands.Cog, name="Chaos Mage Commands"):
     def __init__(self, bot):
         self.bot = bot
 
@@ -67,3 +67,7 @@ class ChaosMageCommands(commands.Cog):
     @chaos_main.command(help='Determine warp element if you have the Warp Talents.')
     async def warp(self, ctx):
         await ctx.send(f"{ctx.author.mention}, your warp element is: **{warp_element()}**")
+
+
+def setup(bot):
+    bot.add_cog(ChaosMageCommands(bot))
