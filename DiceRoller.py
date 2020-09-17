@@ -11,7 +11,6 @@ if bot_config['dice_roller'] == "random_org":
         from random_org_dice import die_roll
     else:
         from default_dice import die_roll
-
         print('No API key for Random.org configured in soulbot.conf, using default dice roller function.')
 elif bot_config['dice_roller'] == "array":
     from array_dice import die_roll, rand_arrays
