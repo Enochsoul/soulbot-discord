@@ -44,4 +44,5 @@ if __name__ == "__main__":
     bot.load_extension('CogAdmin')
     for cog in bot_config['load_cogs']:
         bot.load_extension(f'cogs.{cog}')
+    bot.load_extension('DiceRoller')
     bot.run(token)

@@ -10,6 +10,8 @@ class Zone(tzinfo):
         self.isdst = isdst
         self.name = name
 
+    daylight_check = bool(time.daylight)
+
     def utcoffset(self, dt):
         return timedelta(hours=self.offset) + self.dst(dt)
 
@@ -20,12 +22,11 @@ class Zone(tzinfo):
         return self.name
 
 
-daylight_check = bool(time.daylight)
 GMT = Zone(0, False, 'GMT')
-ET = Zone(-5, daylight_check, 'ET')
-CT = Zone(-6, daylight_check, 'CT')
-MT = Zone(-7, daylight_check, 'MT')
-PT = Zone(-8, daylight_check, 'PT')
+ET = Zone(-5, Zone.daylight_check, 'ET')
+CT = Zone(-6, Zone.daylight_check, 'CT')
+MT = Zone(-7, Zone.daylight_check, 'MT')
+PT = Zone(-8, Zone.daylight_check, 'PT')
 
 
 class DatabaseIO:
@@ -38,7 +39,7 @@ class DatabaseIO:
         self.c.executemany('''INSERT OR REPLACE INTO initiative(name, init) VALUES(?,?)''', init_insert)
         self.bot_db.commit()
 
-    def init_db_delete(self):
+    def init_db_reset(self):
         self.c.execute('''DELETE FROM initiative''')
 
     def init_db_rebuild(self):
