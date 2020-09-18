@@ -48,7 +48,7 @@ if __name__ == "__main__":
             bot.load_extension(f'cogs.{cog}')
         except Exception as e:
             print(f'There was a problem loading Cog {cog}.\nException:\n{e}')
-try:
-    bot.run(token)
-except Exception as e:
-    print(f'Got the following error trying to startup the bot, check your config and try again.\n\n{e}')
+    try:
+        bot.run(token)
+    except Exception as e:
+        print(f'Got the following error trying to startup the bot, check your config and try again.\n\n{e}')
