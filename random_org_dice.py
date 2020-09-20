@@ -1,9 +1,12 @@
+"""Module for using the Random.org API to generate random numbers."""
+
 import requests
 from soulbot import bot_config
 
 
 def die_roll(die_count, die_size):
     """Used for generating random numbers from random.org's APi for dice rolling.
+
     :param die_count: Number of random integers to generate.
     :type die_count: int
     :param die_size: Max value of random number generated.

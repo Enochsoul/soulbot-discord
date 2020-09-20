@@ -13,7 +13,7 @@ Designed to run as a standalone bot for a single discord server.  If you invite 
 3) Fill out the discord token at minimum in the config file.  See below for other config file options.
 4) Build environment from the requirements.txt.
     - Can be in a virtual environment(recommended, it's how it was developed) or use the main system Python instance.
-5) Run the bot script.
+5) Run the soulbot.py script to start up the bot.
 6) Create Discord Role called GM or DM, and assign to the user acting as the DM.  No special permissions required.  Access to some commands is restricted to user with this Role name.
 7) Cog administration restricted to server admin/guild manager permissions.  
 
