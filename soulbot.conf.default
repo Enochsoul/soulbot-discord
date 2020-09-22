@@ -1,0 +1,7 @@
+{
+  "discord_token": "",
+  "command_prefix": "!",
+  "load_cogs": [],
+  "dice_roller": "default",
+  "random_org_key": ""
+}

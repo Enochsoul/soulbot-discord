@@ -1,6 +1,5 @@
 venv/
 
-
 *.pyc
 __pycache__/
 instance/
@@ -14,6 +13,7 @@ build/
 
 data/*
 !data/.gitkeep
+*.conf
 
 .env
 .vscode/
