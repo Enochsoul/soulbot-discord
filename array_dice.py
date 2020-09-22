@@ -1,3 +1,4 @@
+"""Module for random dice rolling via random number arrays."""
 import random
 
 rand_arrays = {
@@ -9,8 +10,8 @@ rand_arrays = {
 
 
 def die_roll(die_count, die_size):
-    global rand_arrays
     """Used for generating random numbers for dice rolling.
+
     :param die_count: Number of random integers to generate.
     :type die_count: int
     :param die_size: Max value of random number generated.
@@ -18,6 +19,7 @@ def die_roll(die_count, die_size):
     :return: List of individual results and sum of results.
     :rtype: (list, int)
     """
+    global rand_arrays
     result = []
     if die_size == 20:
         result = random.sample(rand_arrays['d20'], die_count)

@@ -1,11 +1,10 @@
-# =========================================================
-# Dice roller
-# =========================================================
+"""Cog containing commands for dice rolling."""
 import re
 import random
 from discord.ext import commands, tasks
 from soulbot import bot_config
 
+# Select import of appropriate die roll module based on config.
 if bot_config['dice_roller'] == "random_org":
     if bot_config['random_org_key']:
         from random_org_dice import die_roll
@@ -19,6 +18,7 @@ else:
 
 
 class DiceRoller(commands.Cog, name="Dice Roller"):
+    """Class definition for DiceRoller Cog."""
     def __init__(self, bot):
         self.bot = bot
         if bot_config['dice_roller'] == "array":
@@ -54,6 +54,7 @@ class DiceRoller(commands.Cog, name="Dice Roller"):
     if bot_config['dice_roller'] == "array":
         @tasks.loop(hours=1)
         async def array_builder(self):
+            """Task loop to rebuild arrays every hour."""
             self.rand_arrays = {
                 'd20': [random.randint(1, 20) for _ in range(1000)],
                 'd12': [random.randint(1, 12) for _ in range(1000)],
@@ -67,4 +68,5 @@ class DiceRoller(commands.Cog, name="Dice Roller"):
 
 
 def setup(bot):
+    """Discord module required setup for Cog loading."""
     bot.add_cog(DiceRoller(bot))

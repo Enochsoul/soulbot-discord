@@ -1,12 +1,11 @@
-# =========================================================
-# Quotes
-# =========================================================
+"""Cog for managing Quotes database."""
 import requests
-from SQL_io import soulbot_db
+from soulbot_support import soulbot_db
 from discord.ext import commands
 
 
 class Quotes(commands.Cog):
+    """Class definition for Quotes Cog."""
     def __init__(self, bot):
         self.bot = bot
 
@@ -44,4 +43,5 @@ class Quotes(commands.Cog):
 
 
 def setup(bot):
+    """Discord module required setup for Cog loading."""
     bot.add_cog(Quotes(bot))

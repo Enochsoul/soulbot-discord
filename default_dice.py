@@ -1,3 +1,4 @@
+"""Module for using randint to generate die rolls."""
 import random
 
 

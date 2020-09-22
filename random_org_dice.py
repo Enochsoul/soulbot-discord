@@ -14,7 +14,6 @@ def die_roll(die_count, die_size):
     :return: List of individual results and sum of results.
     :rtype: (list, int)
     """
-
     json_body = {
         "jsonrpc": "2.0",
         "method": "generateIntegers",
