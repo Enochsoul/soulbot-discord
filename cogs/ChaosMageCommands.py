@@ -67,9 +67,10 @@ class ChaosMageCommands(commands.Cog, name="Chaos Mage Commands"):
         """Command to draw a spell type of the enacting user's pool."""
         if ctx.author.display_name in chaos_mages.mages:
             if len(chaos_mages.mages[ctx.author.display_name]) == 2:
+                spell_type = chaos_mages.draw(ctx.author.display_name)
                 chaos_mages.refill(ctx.author.display_name)
                 await ctx.send(f'{ctx.author.mention}, your next spell will be:'
-                               f'\n{chaos_mages.draw(ctx.author.display_name)}\n'
+                               f'\n{spell_type}\n'
                                f'That was your second last spell in the pool, '
                                f'it has automatically been refilled.')
             else:
