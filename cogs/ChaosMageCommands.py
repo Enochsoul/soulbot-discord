@@ -4,8 +4,15 @@ from discord.ext import commands
 
 
 def warp_element():
-    """Returns random element for use in Chaos spells."""
+    """Returns random element for use inC Chaos spells."""
     return random.choice(['Air', 'Fire', 'Water', 'Earth', 'Metal', 'Void'])
+
+
+def iconic_type():
+    """Returns one of 12 different Icons."""
+    return random.choice(['Priestess', 'Crusader', 'Archmage', 'High Druid', 'Elf Queen', 'Diabolist',
+                          'Dwarf King', 'Great Gold Wyrm', 'The Three', 'Prince of Shadows',
+                          'Lich King', 'Orc Lord'])
 
 
 class ChaosMageTracker:
@@ -21,7 +28,8 @@ class ChaosMageTracker:
         """Refills the dictionary of an enacting person with the max number of entries."""
         self.mages[mage_name] = ['**```ARM\nAttack\n```**', '**```ARM\nAttack\n```**',
                                  '**```yaml\nDefense\n```**', '**```yaml\nDefense\n```**',
-                                 '**```CSS\nIconic\n```**', '**```CSS\nIconic\n```**']
+                                 f'**```CSS\nIconic\nIcon: {iconic_type()}\n```**',
+                                 f'**```CSS\nIconic\nIcon: {iconic_type()}\n```**']
         random.shuffle(self.mages[mage_name])
 
     def draw(self, mage_name):
@@ -59,10 +67,9 @@ class ChaosMageCommands(commands.Cog, name="Chaos Mage Commands"):
         """Command to draw a spell type of the enacting user's pool."""
         if ctx.author.display_name in chaos_mages.mages:
             if len(chaos_mages.mages[ctx.author.display_name]) == 2:
-                spell_type = chaos_mages.draw(ctx.author.display_name)
                 chaos_mages.refill(ctx.author.display_name)
                 await ctx.send(f'{ctx.author.mention}, your next spell will be:'
-                               f'\n{spell_type}\n'
+                               f'\n{chaos_mages.draw(ctx.author.display_name)}\n'
                                f'That was your second last spell in the pool, '
                                f'it has automatically been refilled.')
             else:
