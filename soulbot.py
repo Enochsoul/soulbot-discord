@@ -1,12 +1,16 @@
 """A discord bot with commands used to assist game play for the 13th Age RPG."""
 import json
+import discord
 
 from discord.ext import commands
+
+intents = discord.Intents.default()
+intents.members = True
 
 with open('soulbot.conf', "r") as config:
     bot_config = json.load(config)
 token = bot_config['discord_token']
-bot = commands.Bot(command_prefix=bot_config['command_prefix'])
+bot = commands.Bot(command_prefix=bot_config['command_prefix'], intents=intents)
 
 
 @bot.command(help="Changes the bot command prefix.", name='setprefix')
