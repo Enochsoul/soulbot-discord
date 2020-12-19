@@ -1,42 +1,28 @@
 """Module containing support command for the main bot."""
 import sqlite3
 import random
-import time
-from datetime import tzinfo, timedelta, datetime
+import arrow
 
-
-class Zone(tzinfo):
-    """Class to redefine timezones."""
-    def __init__(self, offset, isdst, name):
-        self.offset = offset
-        self.isdst = isdst
-        self.name = name
-
-    daylight_check = bool(time.daylight)
-
-    def utcoffset(self, dt):
-        return timedelta(hours=self.offset) + self.dst(dt)
-
-    def dst(self, dt):
-        return timedelta(hours=1) if self.isdst else timedelta(0)
-
-    def tzname(self, dt):
-        return self.name
-
-
-GMT = Zone(0, False, 'GMT')
-ET = Zone(-5, Zone.daylight_check, 'ET')
-CT = Zone(-6, Zone.daylight_check, 'CT')
-MT = Zone(-7, Zone.daylight_check, 'MT')
-PT = Zone(-8, Zone.daylight_check, 'PT')
+MT = arrow.now('US/Mountain').tzinfo
+PT = arrow.now('US/Pacific').tzinfo
+CT = arrow.now('US/Central').tzinfo
+ET = arrow.now('US/Eastern').tzinfo
+UTC = arrow.utcnow().tzinfo
 
 
 class DatabaseIO:
     """Class definition to contain all interactions with the SQLite3 database."""
+
     def __init__(self):
         self.bot_db = sqlite3.connect('data/discordbot.sql',
                                       detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
         self.c = self.bot_db.cursor()
+        self.c.execute('''CREATE TABLE IF NOT EXISTS next_game
+                      (id INTEGER PRIMARY KEY, created_date INTEGER, next_date INTEGER)''')
+        self.c.execute('''CREATE TABLE IF NOT EXISTS quotes
+                      (id INTEGER PRIMARY KEY, quote TEXT)''')
+        self.c.execute('''CREATE TABLE IF NOT EXISTS initiative
+                      (name TEXT UNIQUE PRIMARY KEY, init INTEGER)''')
 
     def init_db_add(self, init_insert: list):
         """Insert/overwrite Initiative tracker data into the database.
@@ -105,8 +91,16 @@ class DatabaseIO:
         :param output_date: Formatted date string."""
         self.c.execute(
             '''INSERT OR REPLACE INTO next_game(id, created_date, next_date) VALUES(?,?,?)''',
-            (1, datetime.today(),
-             output_date.replace(tzinfo=None)))
+            (1, arrow.now(UTC).timestamp,
+             output_date))
+
+    def next_game_table_reset(self):
+        """Deletes and recreates the Next Game table.
+        Required after redesign to use Arrow module due to database column datatype change."""
+        self.c.execute('''DROP TABLE next_game''')
+        self.bot_db.commit()
+        self.c.execute('''CREATE TABLE IF NOT EXISTS next_game
+                      (id INTEGER PRIMARY KEY, created_date INTEGER, next_date INTEGER)''')
         self.bot_db.commit()
 
 
