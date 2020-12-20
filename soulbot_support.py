@@ -93,6 +93,7 @@ class DatabaseIO:
             '''INSERT OR REPLACE INTO next_game(id, created_date, next_date) VALUES(?,?,?)''',
             (1, arrow.now(UTC).timestamp,
              output_date))
+        self.bot_db.commit()
 
     def next_game_table_reset(self):
         """Deletes and recreates the Next Game table.
