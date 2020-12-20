@@ -57,6 +57,8 @@ Designed to run as a standalone bot for a single discord server.  If you invite 
     - Next Game Schedule Cog:
         - Shows when the next game is in several different timezones, and time until the next game.
         - Toggleable next game @mention announcement in the last hour before the game.
+        - Upgraded this module. If you used a version previous to 2.0.2, you'll need to run the '!next reset' to wipe
+          the DB table and rebuild it for the new data type introduced in 2.0.2.
     - Quotes Cog:
         - Add quotations to the database.
         - Recall random quotations from the database.
