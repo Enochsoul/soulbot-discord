@@ -18,29 +18,29 @@ class DatabaseIO:
                                       detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
         self.c = self.bot_db.cursor()
         self.c.execute('''CREATE TABLE IF NOT EXISTS next_game
-                      (id INTEGER PRIMARY KEY, created_date INTEGER, next_date INTEGER)''')
+                      (id INTEGER PRIMARY KEY, guild_id INTEGER, created_date INTEGER, next_date INTEGER)''')
         self.c.execute('''CREATE TABLE IF NOT EXISTS quotes
-                      (id INTEGER PRIMARY KEY, quote TEXT)''')
+                      (id INTEGER PRIMARY KEY, guild_id INTEGER, quote TEXT)''')
         self.c.execute('''CREATE TABLE IF NOT EXISTS initiative
-                      (name TEXT UNIQUE PRIMARY KEY, init INTEGER)''')
+                      (guild_id INTEGER, name TEXT UNIQUE PRIMARY KEY, init INTEGER)''')
 
     def init_db_add(self, init_insert: list):
         """Insert/overwrite Initiative tracker data into the database.
 
         :param init_insert: List of tuples containing player/NPC initiative values.
         """
-        self.c.executemany('''INSERT OR REPLACE INTO initiative(name, init) VALUES(?,?)''', init_insert)
+        self.c.executemany('''INSERT OR REPLACE INTO initiative(guild_id, name, init) VALUES(?,?,?)''', init_insert)
         self.bot_db.commit()
 
     def init_db_reset(self):
         """Delete initiative table data."""
         self.c.execute('''DELETE FROM initiative''')
 
-    def init_db_rebuild(self):
+    def init_db_rebuild(self, guild_id: int):
         """Retrieve initiative table from the database to rebuild the bot data.
 
-        :return: List of tuples of aoo player/NPC names and initiative values."""
-        self.c.execute('''SELECT name, init FROM initiative''')
+        :return: List of tuples of all player/NPC names and initiative values."""
+        self.c.execute('''SELECT name, init FROM initiative WHERE guild_id=?''', (guild_id,))
         all_rows = self.c.fetchall()
         return all_rows
 
