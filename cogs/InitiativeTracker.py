@@ -100,7 +100,7 @@ class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
             init_obj.tracker_active = True
             init_obj.turn[0] = '--->'
             init_obj.tracker = init_obj.build_init_table()
-            db_insert = [(k, v) for k, v in init_obj.combatant_dict.items()]
+            db_insert = [(ctx.guild.id, k, v) for k, v in init_obj.combatant_dict.items()]
             soulbot_db.init_db_reset()
             soulbot_db.init_db_add(db_insert)
             embed = init_obj.embed_template()
@@ -149,7 +149,7 @@ class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
         else:
             init_obj.combatant_dict[ctx.author.display_name] = new_init
             init_obj.tracker = init_obj.build_init_table()
-            db_insert = [(k, v) for k, v in init_obj.combatant_dict.items()]
+            db_insert = [(ctx.guild.id, k, v) for k, v in init_obj.combatant_dict.items()]
             soulbot_db.init_db_add(db_insert)
             embed = init_obj.embed_template()
             await ctx.send(
@@ -180,7 +180,7 @@ class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
             init_obj.combatant_dict[npc_name] = initiative + init_bonus
             init_obj.turn = ['    ' for _ in range(1, len(init_obj.combatant_dict) + 1)]
             init_obj.tracker = init_obj.build_init_table()
-            db_insert = [(k, v) for k, v in init_obj.combatant_dict.items()]
+            db_insert = [(ctx.guild.id, k, v) for k, v in init_obj.combatant_dict.items()]
             soulbot_db.init_db_add(db_insert)
             for sublist in init_obj.tracker:
                 if player_turn in sublist:
@@ -230,7 +230,7 @@ class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
                 del init_obj.combatant_dict[name]
                 init_obj.turn = ['    ' for _ in range(1, len(init_obj.combatant_dict) + 1)]
                 init_obj.tracker = init_obj.build_init_table()
-                db_insert = [(k, v) for k, v in init_obj.combatant_dict.items()]
+                db_insert = [(ctx.guild.id, k, v) for k, v in init_obj.combatant_dict.items()]
                 soulbot_db.init_db_reset()
                 soulbot_db.init_db_add(db_insert)
                 for sublist in init_obj.tracker:
@@ -262,7 +262,7 @@ class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
         else:
             init_obj.combatant_dict[name] = new_init
             init_obj.tracker = init_obj.build_init_table()
-            db_insert = [(k, v) for k, v in init_obj.combatant_dict.items()]
+            db_insert = [(ctx.guild.id, k, v) for k, v in init_obj.combatant_dict.items()]
             soulbot_db.init_db_add(db_insert)
             await ctx.send(f"{name}'s initiative has been manually set to {new_init}.")
 
@@ -288,7 +288,7 @@ class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
              "Deactivates and resets the tracker, and resets the escalation die.")
     async def rebuild(self, ctx):
         init_obj.reset()
-        all_rows = soulbot_db.init_db_rebuild()
+        all_rows = soulbot_db.init_db_rebuild(ctx.guild.id)
         init_obj.combatant_dict = {_[0]: _[1] for _ in all_rows}
         init_obj.turn = ['    ' for _ in range(1, len(init_obj.combatant_dict) + 1)]
         init_obj.tracker = init_obj.build_init_table()
