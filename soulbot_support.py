@@ -80,18 +80,18 @@ class DatabaseIO:
         else:
             return f"No quotes in the database."
 
-    def next_game_db_get(self):
+    def next_game_db_get(self, guild_id):
         """Pulls Next Game date from the database."""
-        self.c.execute('''SELECT next_date FROM next_game where id=?''', (1,))
+        self.c.execute('''SELECT next_date FROM next_game where id=? and guild_id=?''', (1,guild_id))
         return self.c.fetchone()
 
-    def next_game_db_add(self, output_date):
+    def next_game_db_add(self, output_date, guild_id: int):
         """Replaces current next game data with supplied new date.
 
         :param output_date: Formatted date string."""
         self.c.execute(
-            '''INSERT OR REPLACE INTO next_game(id, created_date, next_date) VALUES(?,?,?)''',
-            (1, arrow.now(UTC).timestamp,
+            '''INSERT OR REPLACE INTO next_game(id, guild_id, created_date, next_date) VALUES(?,?,?,?)''',
+            (1, guild_id, arrow.now(UTC).timestamp,
              output_date))
         self.bot_db.commit()
 
