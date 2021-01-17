@@ -44,21 +44,21 @@ class DatabaseIO:
         all_rows = self.c.fetchall()
         return all_rows
 
-    def quote_db_add(self, quote_insert: str):
+    def quote_db_add(self, quote_insert: str, guild_id: int):
         """Add new quote to the SQL database.
 
         :param quote_insert: Text to add to database.
         """
-        self.c.execute('''INSERT INTO quotes(quote) VALUES(?)''', (quote_insert,))
+        self.c.execute('''INSERT INTO quotes(guild_id, quote) VALUES(?,?)''', (guild_id, quote_insert))
         self.bot_db.commit()
 
-    def quote_db_search(self, quote_search: str):
+    def quote_db_search(self, quote_search: str, guild_id: int):
         """Search SQL database for entries containing text string.
 
         :param quote_search: Text to search for in existing quotes.
         :return: Return random quote, or failure message.
         """
-        self.c.execute('''SELECT quote FROM quotes where quote LIKE ?''', ("%" + str(quote_search) + "%",))
+        self.c.execute('''SELECT quote FROM quotes where quote LIKE ? AND guild_id=?''', ("%" + str(quote_search) + "%", guild_id))
         quote_text = self.c.fetchall()
         if len(quote_text) > 0:
             random_index = random.randint(0, len(quote_text) - 1)
@@ -66,15 +66,15 @@ class DatabaseIO:
         else:
             return f'No quote found with the term "{quote_search}"'
 
-    def quote_db_random(self):
+    def quote_db_random(self, guild_id: int):
         """Pull random line from the database.
 
         :return: Text from randomly selected database entry.
         """
-        self.c.execute('''SELECT * FROM quotes''')
+        self.c.execute('''SELECT * FROM quotes where guild_id=?''', (guild_id,))
         count = len(self.c.fetchall())
         if count > 0:
-            self.c.execute('''SELECT quote FROM quotes ORDER BY RANDOM() LIMIT 1''')
+            self.c.execute('''SELECT quote FROM quotes where guild_id=? ORDER BY RANDOM() LIMIT 1''', (guild_id,))
             quote_text = self.c.fetchone()[0]
             return f'QUOTE: "{quote_text}"'
         else:

@@ -12,16 +12,16 @@ class Quotes(commands.Cog):
     @commands.group(help="Display a random quote submitted to the database, or one containing .")
     async def quote(self, ctx):
         if ctx.invoked_subcommand is None:
-            await ctx.send(soulbot_db.quote_db_random())
+            await ctx.send(soulbot_db.quote_db_random(ctx.guild.id))
 
     @quote.group(name="add", help="Add a quote to the database.")
     async def add_quote(self, ctx, *, quote_text: str):
-        soulbot_db.quote_db_add(quote_text)
+        soulbot_db.quote_db_add(quote_text, ctx.guild.id)
         await ctx.send(f'Added "{str(quote_text)}" to quotes database.')
 
     @quote.group(name='search', help='Search for a quote containing a specific term.')
     async def quote_search(self, ctx, *, search_term: str):
-        await ctx.send(soulbot_db.quote_db_search(search_term))
+        await ctx.send(soulbot_db.quote_db_search(search_term, ctx.guild.id))
 
     @commands.command(help="Very Vahti like.", name='vahti', case_insensitive=True)
     async def whale(self, ctx):
