@@ -41,7 +41,7 @@ class NextGameScheduler(commands.Cog, name="Next Game Scheduler"):
     async def next_game(self, ctx):
         """Base level cog group command."""
         if ctx.invoked_subcommand is None:
-            next_game_scheduled = soulbot_db.next_game_db_get()
+            next_game_scheduled = soulbot_db.next_game_db_get(ctx.guild.id)
             if not next_game_scheduled:
                 await ctx.send("The next game hasn't been scheduled yet.")
             else:
@@ -65,7 +65,7 @@ class NextGameScheduler(commands.Cog, name="Next Game Scheduler"):
                                            minute=0,
                                            second=0,
                                            microsecond=0).shift(days=14)
-        soulbot_db.next_game_db_add(default_date.to(UTC).timestamp)
+        soulbot_db.next_game_db_add(default_date.to(UTC).timestamp, ctx.guild.id)
         next_game_embed = next_game_embed_template(default_date.to(UTC))
         await ctx.send(embed=next_game_embed)
 
@@ -87,7 +87,7 @@ class NextGameScheduler(commands.Cog, name="Next Game Scheduler"):
             await ctx.send("Please use the format: DD/MM/YYYY(EG: 05/31/2020)")
         else:
             output_date = arrow.Arrow(sch_year, sch_month, sch_day, 13, 0, 0, 0, MT)
-            soulbot_db.next_game_db_add(output_date.to(UTC).timestamp)
+            soulbot_db.next_game_db_add(output_date.to(UTC).timestamp, ctx.guild.id)
             next_game_embed = next_game_embed_template(output_date.to(UTC))
             await ctx.send(f"Set next game date to {sch_day}/{sch_month}/{sch_year}"
                            f" at the default time.\nUse the **{ctx.prefix}next schedule time** "
@@ -112,13 +112,13 @@ class NextGameScheduler(commands.Cog, name="Next Game Scheduler"):
             await ctx.send("Please indicate your timezone, ET, CT, MT, or PT.")
         else:
             time_zone = timezones[schedule_tz]
-            next_game_scheduled = arrow.get(soulbot_db.next_game_db_get()[0])
+            next_game_scheduled = arrow.get(soulbot_db.next_game_db_get(ctx.guild.id)[0])
             output_date = next_game_scheduled.to(time_zone).replace(hour=sch_hour,
                                                                     minute=sch_minute,
                                                                     microsecond=0,
                                                                     second=0)
 
-            soulbot_db.next_game_db_add(output_date.to(UTC).timestamp)
+            soulbot_db.next_game_db_add(output_date.to(UTC).timestamp, ctx.guild.id)
             next_game_embed = next_game_embed_template(output_date.to(UTC))
             await ctx.send("Next game time successfully set.", embed=next_game_embed)
 
@@ -156,7 +156,7 @@ class NextGameScheduler(commands.Cog, name="Next Game Scheduler"):
     @tasks.loop(minutes=15)
     async def game_announce(self):
         """Discord task loop to check if the next game will start in the next 60 minutes."""
-        next_game_scheduled = arrow.get(soulbot_db.next_game_db_get()[0])
+        next_game_scheduled = arrow.get(soulbot_db.next_game_db_get(ctx.guild.id)[0])
         countdown = next_game_scheduled - arrow.utcnow()
         for channel in self.bot.get_all_channels():
             if channel.name == "general":
