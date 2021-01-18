@@ -22,7 +22,7 @@ class DatabaseIO:
         self.c.execute('''CREATE TABLE IF NOT EXISTS quotes
                       (id INTEGER PRIMARY KEY, guild_id INTEGER, quote TEXT)''')
         self.c.execute('''CREATE TABLE IF NOT EXISTS initiative
-                      (guild_id INTEGER, name TEXT UNIQUE PRIMARY KEY, init INTEGER)''')
+                      (guild_id INTEGER, name TEXT, init INTEGER)''')
         self.c.execute('''CREATE TABLE IF NOT EXISTS config
                       (guild_id INTEGER UNIQUE PRIMARY KEY, prefix TEXT)''')
 
@@ -31,8 +31,7 @@ class DatabaseIO:
 
         :param init_insert: List of tuples containing player/NPC initiative values.
         """
-        self.c.executemany('''INSERT OR REPLACE INTO initiative(guild_id, name, init) VALUES(?,?,?)''', init_insert)
-        self.bot_db.commit()
+        self.c.executemany('''INSERT INTO initiative(guild_id, name, init) VALUES(?,?,?)''', init_insert)
 
     def init_db_reset(self, guild_id: int):
         """Delete initiative table data."""
@@ -45,6 +44,11 @@ class DatabaseIO:
         self.c.execute('''SELECT name, init FROM initiative WHERE guild_id=?''', (guild_id,))
         all_rows = self.c.fetchall()
         return all_rows
+
+    def init_db_commit(self):
+        """Commits changes to the database.  Allows commits to be more selective from the commands.
+        """
+        self.bot_db.commit()
 
     def quote_db_add(self, quote_insert: str, guild_id: int):
         """Add new quote to the SQL database.
