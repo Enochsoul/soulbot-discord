@@ -4,6 +4,7 @@ from discord.ext import commands
 from tabulate import tabulate
 from soulbot_support import soulbot_db
 from DiceRoller import die_roll
+from soulbot import bot
 
 
 class InitiativeTrack:
@@ -53,8 +54,17 @@ class InitiativeTrack:
         return embed_template
 
 
-init_obj = InitiativeTrack()
+init_obj = {}
+guilds = soulbot_db.config_load()
+for k in guilds.keys():
+    init_obj[k] = InitiativeTrack()
 
+
+@bot.event
+async def on_guild_join(guild):
+    global init_obj
+    init_obj[guild.id] = InitiativeTrack()
+    
 
 class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
     """Class definition for Initiative Tracker Cog."""
@@ -70,62 +80,64 @@ class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
 
     @init.command(help="Clears the Initiative tracker, and starts a new order.")
     async def reset(self, ctx):
-        init_obj.reset()
-        soulbot_db.init_db_reset()
+        init_obj[ctx.guild.id].reset()
+        soulbot_db.init_db_reset(ctx.guild.id)
+        soulbot_db.init_db_commit()
         await ctx.send("Initiative Tracker is reset and active.")
 
     @init.command(name='roll', help="Rolls your initiative plus the supplied "
                                     "bonus and adds you to the order.")
     async def init_roll(self, ctx, init_bonus: int = 0):
-        if init_obj.tracker_active is True:
+        if init_obj[ctx.guild.id].tracker_active is True:
             await ctx.send("Initiative Tracker is locked in an active combat session.")
-        elif ctx.author.display_name in init_obj.combatant_dict:
+        elif ctx.author.display_name in init_obj[ctx.guild.id].combatant_dict:
             await ctx.send(f"{ctx.author.display_name} is already in the initiative order.")
         else:
             initiative = die_roll(1, 20)[1]
-            init_obj.combatant_dict[ctx.author.display_name] = initiative + init_bonus
-            init_obj.turn = ['    ' for _ in range(1, len(init_obj.combatant_dict) + 1)]
-            init_obj.tracker = init_obj.build_init_table()
+            init_obj[ctx.guild.id].combatant_dict[ctx.author.display_name] = initiative + init_bonus
+            init_obj[ctx.guild.id].turn = ['    ' for _ in range(1, len(init_obj[ctx.guild.id].combatant_dict) + 1)]
+            init_obj[ctx.guild.id].tracker = init_obj[ctx.guild.id].build_init_table()
             await ctx.send(
                 f"{ctx.author.display_name}'s Initiative is ({initiative}+{init_bonus})"
-                f" {init_obj.combatant_dict[ctx.author.display_name]}.")
+                f" {init_obj[ctx.guild.id].combatant_dict[ctx.author.display_name]}.")
 
     @init.command(help="Starts the tracker and prevents any additions.")
     async def start(self, ctx):
-        if len(init_obj.combatant_dict) == 0:
+        if len(init_obj[ctx.guild.id].combatant_dict) == 0:
             await ctx.send(f"Please use **{ctx.prefix}init roll** to add to the order first.")
-        elif init_obj.tracker_active is True:
+        elif init_obj[ctx.guild.id].tracker_active is True:
             await ctx.send("Tracker is already started.")
         else:
-            init_obj.tracker_active = True
-            init_obj.turn[0] = '--->'
-            init_obj.tracker = init_obj.build_init_table()
-            db_insert = [(ctx.guild.id, k, v) for k, v in init_obj.combatant_dict.items()]
-            soulbot_db.init_db_reset()
+            init_obj[ctx.guild.id].tracker_active = True
+            init_obj[ctx.guild.id].turn[0] = '--->'
+            init_obj[ctx.guild.id].tracker = init_obj[ctx.guild.id].build_init_table()
+            db_insert = [(ctx.guild.id, k, v) for k, v in init_obj[ctx.guild.id].combatant_dict.items()]
+            soulbot_db.init_db_reset(ctx.guild.id)
             soulbot_db.init_db_add(db_insert)
-            embed = init_obj.embed_template()
+            soulbot_db.init_db_commit()
+            embed = init_obj[ctx.guild.id].embed_template()
             await ctx.send(embed=embed)
 
     @init.command(help="Shows current turn order, rolls and tracker status.")
     async def show(self, ctx):
-        embed = init_obj.embed_template()
+        embed = init_obj[ctx.guild.id].embed_template()
         await ctx.send(embed=embed)
 
     @init.command(name='next', help="Advances the initiative order.")
     async def next_turn(self, ctx):
-        if init_obj.tracker_active:
-            if init_obj.turn.index('--->') < len(init_obj.combatant_dict) - 1:
-                init_obj.turn.insert(0, init_obj.turn.pop(-1))
-                init_obj.tracker = init_obj.build_init_table()
-                embed = init_obj.embed_template()
+        if init_obj[ctx.guild.id].tracker_active:
+            if init_obj[ctx.guild.id].turn.index('--->') < len(init_obj[ctx.guild.id].combatant_dict) - 1:
+                init_obj[ctx.guild.id].turn.insert(0, init_obj[ctx.guild.id].turn.pop(-1))
+                init_obj[ctx.guild.id].tracker = init_obj[ctx.guild.id].build_init_table()
+                embed = init_obj[ctx.guild.id].embed_template()
                 await ctx.send("Beginning next turn.", embed=embed)
-            elif init_obj.turn.index('--->') == len(init_obj.combatant_dict) - 1:
-                init_obj.turn.insert(0, init_obj.turn.pop(-1))
-                init_obj.tracker = init_obj.build_init_table()
-                init_obj.escalation += 1
-                if init_obj.escalation > 6:
-                    init_obj.escalation = 6
-                embed = init_obj.embed_template()
+            elif init_obj[ctx.guild.id].turn.index('--->') == len(init_obj[ctx.guild.id].combatant_dict) - 1:
+                init_obj[ctx.guild.id].turn.insert(0, init_obj[ctx.guild.id].turn.pop(-1))
+                init_obj[ctx.guild.id].tracker = init_obj[ctx.guild.id].build_init_table()
+                init_obj[ctx.guild.id].escalation += 1
+                if init_obj[ctx.guild.id].escalation > 6:
+                    init_obj[ctx.guild.id].escalation = 6
+                embed = init_obj[ctx.guild.id].embed_template()
                 await ctx.send("Beginning next combat round.", embed=embed)
         else:
             await ctx.send(f"Tracker not active, use **{ctx.prefix}init start** to begin.")
@@ -133,28 +145,30 @@ class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
     @init.command(help="Allows a user to delay their turn in the order.")
     async def delay(self, ctx, new_init: int):
         player_turn = ""
-        for sublist in init_obj.tracker:
+        for sublist in init_obj[ctx.guild.id].tracker:
             if '--->' in sublist:
-                player_turn = init_obj.tracker[init_obj.tracker.index(sublist)][1]
-        if init_obj.tracker_active is False:
+                player_turn = init_obj[ctx.guild.id].tracker[init_obj[ctx.guild.id].tracker.index(sublist)][1]
+        if init_obj[ctx.guild.id].tracker_active is False:
             await ctx.send(f"Tracker not active, use **{ctx.prefix}init start** to begin.")
-        elif ctx.author.display_name not in init_obj.combatant_dict:
+        elif ctx.author.display_name not in init_obj[ctx.guild.id].combatant_dict:
             await ctx.send(f"{ctx.author.display_name} is not in the initiative order.")
-        elif new_init > init_obj.combatant_dict[ctx.author.display_name]:
+        elif new_init > init_obj[ctx.guild.id].combatant_dict[ctx.author.display_name]:
             await ctx.send(
                 f"New initiative({new_init}) must be lower than original"
-                f"({init_obj.combatant_dict[ctx.author.display_name]}).")
+                f"({init_obj[ctx.guild.id].combatant_dict[ctx.author.display_name]}).")
         elif ctx.author.display_name != player_turn:
             await ctx.send("Delay should be done on your turn.")
         else:
-            init_obj.combatant_dict[ctx.author.display_name] = new_init
-            init_obj.tracker = init_obj.build_init_table()
-            db_insert = [(ctx.guild.id, k, v) for k, v in init_obj.combatant_dict.items()]
+            init_obj[ctx.guild.id].combatant_dict[ctx.author.display_name] = new_init
+            init_obj[ctx.guild.id].tracker = init_obj[ctx.guild.id].build_init_table()
+            db_insert = [(ctx.guild.id, k, v) for k, v in init_obj[ctx.guild.id].combatant_dict.items()]
+            soulbot_db.init_db_reset(ctx.guild.id)
             soulbot_db.init_db_add(db_insert)
-            embed = init_obj.embed_template()
+            soulbot_db.init_db_commit()
+            embed = init_obj[ctx.guild.id].embed_template()
             await ctx.send(
                 f"Initiative for {ctx.author.display_name} has been delayed to "
-                f"{init_obj.combatant_dict[ctx.author.display_name]}. "
+                f"{init_obj[ctx.guild.id].combatant_dict[ctx.author.display_name]}. "
                 f"Initiative order has been recalculated.", embed=embed)
 
     @init.group(case_insensitive=True, help="Commands for the DM.", name="dm")
@@ -172,41 +186,43 @@ class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
         if "!" and "@" in npc_name:
             mention_user = npc_name.replace("<", "").replace(">", "").replace("@", "").replace("!", "")
             npc_name = ctx.guild.get_member(int(mention_user)).display_name
-        for sublist in init_obj.tracker:
+        for sublist in init_obj[ctx.guild.id].tracker:
             if '--->' in sublist:
-                player_turn = init_obj.tracker[init_obj.tracker.index(sublist)][1]
-        if init_obj.tracker_active:
+                player_turn = init_obj[ctx.guild.id].tracker[init_obj[ctx.guild.id].tracker.index(sublist)][1]
+        if init_obj[ctx.guild.id].tracker_active:
             initiative = die_roll(1, 20)[1]
-            init_obj.combatant_dict[npc_name] = initiative + init_bonus
-            init_obj.turn = ['    ' for _ in range(1, len(init_obj.combatant_dict) + 1)]
-            init_obj.tracker = init_obj.build_init_table()
-            db_insert = [(ctx.guild.id, k, v) for k, v in init_obj.combatant_dict.items()]
+            init_obj[ctx.guild.id].combatant_dict[npc_name] = initiative + init_bonus
+            init_obj[ctx.guild.id].turn = ['    ' for _ in range(1, len(init_obj[ctx.guild.id].combatant_dict) + 1)]
+            init_obj[ctx.guild.id].tracker = init_obj[ctx.guild.id].build_init_table()
+            db_insert = [(ctx.guild.id, k, v) for k, v in init_obj[ctx.guild.id].combatant_dict.items()]
+            soulbot_db.init_db_reset(ctx.guild.id)
             soulbot_db.init_db_add(db_insert)
-            for sublist in init_obj.tracker:
+            soulbot_db.init_db_commit()
+            for sublist in init_obj[ctx.guild.id].tracker:
                 if player_turn in sublist:
-                    init_obj.tracker[init_obj.tracker.index(sublist)][0] = '--->'
-                    init_obj.turn[init_obj.tracker.index(sublist)] = '--->'
+                    init_obj[ctx.guild.id].tracker[init_obj[ctx.guild.id].tracker.index(sublist)][0] = '--->'
+                    init_obj[ctx.guild.id].turn[init_obj[ctx.guild.id].tracker.index(sublist)] = '--->'
             await ctx.send(f"Adding {npc_name} to active combat round.\n"
                            f"Initiative is ({initiative}+{init_bonus}) "
-                           f"{init_obj.combatant_dict[npc_name]}.")
-        elif npc_name in init_obj.combatant_dict:
+                           f"{init_obj[ctx.guild.id].combatant_dict[npc_name]}.")
+        elif npc_name in init_obj[ctx.guild.id].combatant_dict:
             await ctx.send(f"{npc_name} is already used in the initiative order.")
         else:
             initiative = die_roll(1, 20)[1]
-            init_obj.combatant_dict[npc_name] = initiative + init_bonus
-            init_obj.turn = ['    ' for _ in range(1, len(init_obj.combatant_dict) + 1)]
-            init_obj.tracker = init_obj.build_init_table()
+            init_obj[ctx.guild.id].combatant_dict[npc_name] = initiative + init_bonus
+            init_obj[ctx.guild.id].turn = ['    ' for _ in range(1, len(init_obj[ctx.guild.id].combatant_dict) + 1)]
+            init_obj[ctx.guild.id].tracker = init_obj[ctx.guild.id].build_init_table()
             await ctx.send(f"{npc_name}'s Initiative is ({initiative}+{init_bonus}) "
-                           f"{init_obj.combatant_dict[npc_name]}.")
+                           f"{init_obj[ctx.guild.id].combatant_dict[npc_name]}.")
 
     @dm_group.command(help="Allows DM to manipulate the Escalation Die.  "
                            "Value can be plus or minus.")
     async def escalate(self, ctx, value_change: int):
-        if init_obj.tracker_active is True:
-            init_obj.escalation = init_obj.escalation + value_change
-            if init_obj.escalation > 6:
-                init_obj.escalation = 6
-            await ctx.send(f"Escalation die is now {init_obj.escalation}")
+        if init_obj[ctx.guild.id].tracker_active is True:
+            init_obj[ctx.guild.id].escalation = init_obj[ctx.guild.id].escalation + value_change
+            if init_obj[ctx.guild.id].escalation > 6:
+                init_obj[ctx.guild.id].escalation = 6
+            await ctx.send(f"Escalation die is now {init_obj[ctx.guild.id].escalation}")
         else:
             await ctx.send(f"Tracker not active, use **{ctx.prefix}init start** to begin.")
 
@@ -217,32 +233,33 @@ class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
         if "!" and "@" in name:
             mention_user = name.replace("<", "").replace(">", "").replace("@", "").replace("!", "")
             name = ctx.guild.get_member(int(mention_user)).display_name
-        if name not in init_obj.combatant_dict:
+        if name not in init_obj[ctx.guild.id].combatant_dict:
             await ctx.send(f"{name} is not in the initiative order.")
-        elif init_obj.tracker_active:
-            for sublist in init_obj.tracker:
+        elif init_obj[ctx.guild.id].tracker_active:
+            for sublist in init_obj[ctx.guild.id].tracker:
                 if '--->' in sublist:
-                    active_user = init_obj.tracker[init_obj.tracker.index(sublist)][1]
+                    active_user = init_obj[ctx.guild.id].tracker[init_obj[ctx.guild.id].tracker.index(sublist)][1]
             if active_user == name:
                 await ctx.send(f"{name} is the active combatant, "
                                f"please advance the turn before removing them.")
             else:
-                del init_obj.combatant_dict[name]
-                init_obj.turn = ['    ' for _ in range(1, len(init_obj.combatant_dict) + 1)]
-                init_obj.tracker = init_obj.build_init_table()
-                db_insert = [(ctx.guild.id, k, v) for k, v in init_obj.combatant_dict.items()]
-                soulbot_db.init_db_reset()
+                del init_obj[ctx.guild.id].combatant_dict[name]
+                init_obj[ctx.guild.id].turn = ['    ' for _ in range(1, len(init_obj[ctx.guild.id].combatant_dict) + 1)]
+                init_obj[ctx.guild.id].tracker = init_obj[ctx.guild.id].build_init_table()
+                db_insert = [(ctx.guild.id, k, v) for k, v in init_obj[ctx.guild.id].combatant_dict.items()]
+                soulbot_db.init_db_reset(ctx.guild.id)
                 soulbot_db.init_db_add(db_insert)
-                for sublist in init_obj.tracker:
+                soulbot_db.init_db_commit()
+                for sublist in init_obj[ctx.guild.id].tracker:
                     if active_user in sublist:
-                        init_obj.tracker[init_obj.tracker.index(sublist)][0] = '--->'
-                        init_obj.turn[init_obj.tracker.index(sublist)] = '--->'
+                        init_obj[ctx.guild.id].tracker[init_obj[ctx.guild.id].tracker.index(sublist)][0] = '--->'
+                        init_obj[ctx.guild.id].turn[init_obj[ctx.guild.id].tracker.index(sublist)] = '--->'
                 await ctx.send(
                     f"{name} has been removed from the initiative table.")
         else:
-            del init_obj.combatant_dict[name]
-            init_obj.turn = ['    ' for _ in range(1, len(init_obj.combatant_dict) + 1)]
-            init_obj.tracker = init_obj.build_init_table()
+            del init_obj[ctx.guild.id].combatant_dict[name]
+            init_obj[ctx.guild.id].turn = ['    ' for _ in range(1, len(init_obj[ctx.guild.id].combatant_dict) + 1)]
+            init_obj[ctx.guild.id].tracker = init_obj[ctx.guild.id].build_init_table()
             await ctx.send(
                 f"{name} has been removed from the initiative table.")
 
@@ -253,17 +270,19 @@ class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
         if "!" and "@" in name:
             mention_user = name.replace("<", "").replace(">", "").replace("@", "").replace("!", "")
             name = ctx.guild.get_member(int(mention_user)).display_name
-        if name not in init_obj.combatant_dict:
+        if name not in init_obj[ctx.guild.id].combatant_dict:
             await ctx.send(f"{name} is not in the initiative order.")
-        elif init_obj.tracker_active is False:
-            init_obj.combatant_dict[name] = new_init
-            init_obj.tracker = init_obj.build_init_table()
+        elif init_obj[ctx.guild.id].tracker_active is False:
+            init_obj[ctx.guild.id].combatant_dict[name] = new_init
+            init_obj[ctx.guild.id].tracker = init_obj[ctx.guild.id].build_init_table()
             await ctx.send(f"{name}'s initiative has been manually set to {new_init}.")
         else:
-            init_obj.combatant_dict[name] = new_init
-            init_obj.tracker = init_obj.build_init_table()
-            db_insert = [(ctx.guild.id, k, v) for k, v in init_obj.combatant_dict.items()]
+            init_obj[ctx.guild.id].combatant_dict[name] = new_init
+            init_obj[ctx.guild.id].tracker = init_obj[ctx.guild.id].build_init_table()
+            db_insert = [(ctx.guild.id, k, v) for k, v in init_obj[ctx.guild.id].combatant_dict.items()]
+            soulbot_db.init_db_reset(ctx.guild.id)
             soulbot_db.init_db_add(db_insert)
+            soulbot_db.init_db_commit()
             await ctx.send(f"{name}'s initiative has been manually set to {new_init}.")
 
     @dm_group.command(help='Allows DM to manually change who is the active combatant.')
@@ -271,15 +290,15 @@ class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
         if "!" and "@" in name:
             mention_user = name.replace("<", "").replace(">", "").replace("@", "").replace("!", "")
             name = ctx.guild.get_member(int(mention_user)).display_name
-        if not init_obj.tracker_active:
+        if not init_obj[ctx.guild.id].tracker_active:
             await ctx.send("Initiative tracker is not active.")
         else:
-            init_obj.turn = ['    ' for _ in range(1, len(init_obj.combatant_dict) + 1)]
-            for sublist in init_obj.tracker:
+            init_obj[ctx.guild.id].turn = ['    ' for _ in range(1, len(init_obj[ctx.guild.id].combatant_dict) + 1)]
+            for sublist in init_obj[ctx.guild.id].tracker:
                 if name in sublist:
-                    init_obj.turn[init_obj.tracker.index(sublist)] = '--->'
-                    init_obj.tracker = init_obj.build_init_table()
-            embed = init_obj.embed_template()
+                    init_obj[ctx.guild.id].turn[init_obj[ctx.guild.id].tracker.index(sublist)] = '--->'
+                    init_obj[ctx.guild.id].tracker = init_obj[ctx.guild.id].build_init_table()
+            embed = init_obj[ctx.guild.id].embed_template()
             await ctx.send(f"{name} is now the active combatant.", embed=embed)
 
     @dm_group.command(
@@ -287,12 +306,12 @@ class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
              "Rebuild the init tracker from the backup database.  "
              "Deactivates and resets the tracker, and resets the escalation die.")
     async def rebuild(self, ctx):
-        init_obj.reset()
+        init_obj[ctx.guild.id].reset()
         all_rows = soulbot_db.init_db_rebuild(ctx.guild.id)
-        init_obj.combatant_dict = {_[0]: _[1] for _ in all_rows}
-        init_obj.turn = ['    ' for _ in range(1, len(init_obj.combatant_dict) + 1)]
-        init_obj.tracker = init_obj.build_init_table()
-        embed = init_obj.embed_template()
+        init_obj[ctx.guild.id].combatant_dict = {_[0]: _[1] for _ in all_rows}
+        init_obj[ctx.guild.id].turn = ['    ' for _ in range(1, len(init_obj[ctx.guild.id].combatant_dict) + 1)]
+        init_obj[ctx.guild.id].tracker = init_obj[ctx.guild.id].build_init_table()
+        embed = init_obj[ctx.guild.id].embed_template()
         await ctx.send("Initiative tracker has been reset and rebuilt from the backup database.",
                        embed=embed)
 
@@ -323,14 +342,14 @@ class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
         crit_range_plus4 = ":x:"
         attack_roll = die_roll(1, 20)
         attack_natural = attack_roll[1]
-        attack_modified = attack_natural + bonus + init_obj.escalation
+        attack_modified = attack_natural + bonus + init_obj[ctx.guild.id].escalation
         if attack_natural == 20:
             crit = ":white_check_mark:"
         if attack_natural >= 18:
             crit_range_plus2 = ":white_check_mark:"
         if attack_natural >= 16:
             crit_range_plus4 = ":white_check_mark:"
-        math = f"|| ({attack_natural} + {bonus} + {init_obj.escalation} = {attack_modified}) ||"
+        math = f"|| ({attack_natural} + {bonus} + {init_obj[ctx.guild.id].escalation} = {attack_modified}) ||"
         attack_embed = discord.Embed(title="__**Attack Result**__",
                                      description=f"{attack_modified}\n{math}",
                                      color=0x0000ff)
@@ -347,7 +366,7 @@ class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
                                value=f"{crit_range_plus4}",
                                inline=True)
         attack_embed.add_field(name="Escalation",
-                               value=f"{init_obj.escalation}")
+                               value=f"{init_obj[ctx.guild.id].escalation}")
         await ctx.send(f"{ctx.author.mention} rolled to attack.",
                        embed=attack_embed)
 
