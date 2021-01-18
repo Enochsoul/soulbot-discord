@@ -23,6 +23,8 @@ class DatabaseIO:
                       (id INTEGER PRIMARY KEY, guild_id INTEGER, quote TEXT)''')
         self.c.execute('''CREATE TABLE IF NOT EXISTS initiative
                       (guild_id INTEGER, name TEXT UNIQUE PRIMARY KEY, init INTEGER)''')
+        self.c.execute('''CREATE TABLE IF NOT EXISTS config
+                      (guild_id INTEGER UNIQUE PRIMARY KEY, prefix TEXT)''')
 
     def init_db_add(self, init_insert: list):
         """Insert/overwrite Initiative tracker data into the database.
@@ -32,9 +34,9 @@ class DatabaseIO:
         self.c.executemany('''INSERT OR REPLACE INTO initiative(guild_id, name, init) VALUES(?,?,?)''', init_insert)
         self.bot_db.commit()
 
-    def init_db_reset(self):
+    def init_db_reset(self, guild_id: int):
         """Delete initiative table data."""
-        self.c.execute('''DELETE FROM initiative''')
+        self.c.execute('''DELETE FROM initiative where guild_id=?''', (guild_id,))
 
     def init_db_rebuild(self, guild_id: int):
         """Retrieve initiative table from the database to rebuild the bot data.
@@ -102,6 +104,17 @@ class DatabaseIO:
         self.bot_db.commit()
         self.c.execute('''CREATE TABLE IF NOT EXISTS next_game
                       (id INTEGER PRIMARY KEY, created_date INTEGER, next_date INTEGER)''')
+        self.bot_db.commit()
+
+    def config_load(self):
+        """Loads config settings for all registered guilds."""
+        self.c.execute('''SELECT * FROM config''')
+        configs = self.c.fetchall()
+        return {k:v for k,v in configs}
+
+    def config_insert(self, guild_id: int, prefix: str):
+        """Adds or updates a guild's configured prefix."""
+        self.c.execute('''INSERT or REPLACE INTO config(guild_id, prefix) VALUES(?,?)''', (guild_id, prefix))
         self.bot_db.commit()
 
 
