@@ -3,6 +3,7 @@ import json
 import discord
 
 from discord.ext import commands
+from soulbot_support import soulbot_db
 
 intents = discord.Intents.default()
 intents.members = True
@@ -10,19 +11,28 @@ intents.members = True
 with open('soulbot.conf', "r") as config:
     bot_config = json.load(config)
 token = bot_config['discord_token']
-bot = commands.Bot(command_prefix=bot_config['command_prefix'], intents=intents)
+
+
+def get_prefix(bot, message):
+    """Used to load all the prefixes from the config database and 
+    return the correct one from the calling server.
+    """
+    prefixes = soulbot_db.config_load()
+    if message.guild.id in list(prefixes.keys()):
+        return prefixes[message.guild.id]
+    else:
+        return bot_config['command_prefix']
+
+
+bot = commands.Bot(command_prefix=get_prefix, intents=intents)
 
 
 @bot.command(help="Changes the bot command prefix.", name='setprefix')
 @commands.has_guild_permissions(manage_guild=True)
 async def set_prefix(ctx, prefix: str):
-    """Takes in a prefix from the user, saves it to the running config
-    and updates the bot config.
+    """Takes in a prefix from the user, and updates the bot config.
     """
-    bot_config['command_prefix'] = prefix
-    bot.command_prefix = prefix
-    with open('soulbot.conf', 'w') as outfile:
-        json.dump(bot_config, outfile)
+    soulbot_db.config_insert(ctx.guild.id, prefix)
     await ctx.send(f"Prefix now set to {prefix}.")
 
 
@@ -39,6 +49,11 @@ async def on_command_error(ctx, error):
     if isinstance(error, commands.errors.CommandNotFound):
         await ctx.send(f"{ctx.prefix}{ctx.invoked_with} is not a valid command.  "
                        f"See **{ctx.prefix}help** for available commands.")
+
+
+@bot.event
+async def on_guild_join(guild):
+    soulbot_db.config_insert(guild.id, bot_config['command_prefix'])
 
 
 # =========================================================
