@@ -412,7 +412,7 @@ class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
     async def cog_command_error(self, ctx, error):
         if isinstance(error, commands.CommandInvokeError):
             print(error)
-            await ctx.send("Tracker is not started.")
+            await ctx.send("An error occurred with the last command.")
         elif isinstance(error, commands.BadArgument):
             await ctx.send(f'Invalid attack bonus, please check **{ctx.prefix}help '
                            f'{ctx.invoked_with}** for command syntax.')

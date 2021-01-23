@@ -2,6 +2,7 @@
 import requests
 from soulbot_support import soulbot_db
 from discord.ext import commands
+import re
 
 
 class Quotes(commands.Cog):
@@ -9,13 +10,27 @@ class Quotes(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.group(help="Display a random quote submitted to the database, or one containing .")
+    @commands.group(help="Display a random quote submitted to the database, or one containing a search string.  "
+                         "Just like the internet, everything submitted is forever.")
     async def quote(self, ctx):
         if ctx.invoked_subcommand is None:
             await ctx.send(soulbot_db.quote_db_random(ctx.guild.id))
 
     @quote.group(name="add", help="Add a quote to the database.")
     async def add_quote(self, ctx, *, quote_text: str):
+        for _ in range(0, len(re.findall('@', quote_text))):
+            if len(re.findall('<@[!|&]\d+>', quote_text)) > 0:
+                mentioned_users = re.findall('<@[!|&]\d+>', quote_text)
+                for member in mentioned_users:
+                    if '!' in member:
+                        member_id = member.replace('<', '').replace('>', '').replace('!', '').replace('@', '')
+                        member_name = ctx.guild.get_member(int(member_id)).display_name
+                    else:
+                        member_name = ""
+                    quote_text = quote_text.replace(member, member_name)
+            elif '@here' in quote_text or '@everyone' in quote_text:
+                quote_text = quote_text.replace('@', '')
+                soulbot_db.quote_db_add(quote_text, ctx.guild.id)
         soulbot_db.quote_db_add(quote_text, ctx.guild.id)
         await ctx.send(f'Added "{str(quote_text)}" to quotes database.')
 

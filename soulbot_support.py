@@ -80,8 +80,8 @@ class DatabaseIO:
         self.c.execute('''SELECT * FROM quotes where guild_id=?''', (guild_id,))
         count = len(self.c.fetchall())
         if count > 0:
-            self.c.execute('''SELECT quote FROM quotes where guild_id=? ORDER BY RANDOM() LIMIT 1''', (guild_id,))
-            quote_text = self.c.fetchone()[0]
+            self.c.execute('''SELECT id, quote FROM quotes where guild_id=? ORDER BY RANDOM() LIMIT 1''', (guild_id,))
+            quote_text = self.c.fetchone()[1]
             return f'QUOTE: "{quote_text}"'
         else:
             return f"No quotes in the database."
