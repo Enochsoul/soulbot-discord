@@ -4,7 +4,7 @@ from discord.ext import commands
 from tabulate import tabulate
 from soulbot_support import soulbot_db
 from DiceRoller import die_roll
-from soulbot import bot
+from soulbot import bot as init_bot
 
 
 class InitiativeTrack:
@@ -55,12 +55,12 @@ class InitiativeTrack:
 
 
 init_obj = {}
-guilds = soulbot_db.config_load()
-for k in guilds.keys():
+guild_list = soulbot_db.config_all_prefix_load()
+for k in guild_list:
     init_obj[k] = InitiativeTrack()
 
 
-@bot.event
+@init_bot.event
 async def on_guild_join(guild):
     global init_obj
     init_obj[guild.id] = InitiativeTrack()
