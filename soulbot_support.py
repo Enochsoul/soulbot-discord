@@ -18,13 +18,14 @@ class DatabaseIO:
                                       detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
         self.c = self.bot_db.cursor()
         self.c.execute('''CREATE TABLE IF NOT EXISTS next_game
-                      (id INTEGER PRIMARY KEY, guild_id INTEGER, created_date INTEGER, next_date INTEGER)''')
+                      (guild_id INTEGER UNIQUE, created_date INTEGER, next_date INTEGER)''')
         self.c.execute('''CREATE TABLE IF NOT EXISTS quotes
                       (id INTEGER PRIMARY KEY, guild_id INTEGER, quote TEXT)''')
         self.c.execute('''CREATE TABLE IF NOT EXISTS initiative
                       (guild_id INTEGER, name TEXT, init INTEGER)''')
         self.c.execute('''CREATE TABLE IF NOT EXISTS config
-                      (guild_id INTEGER UNIQUE PRIMARY KEY, prefix TEXT)''')
+                      (guild_id INTEGER UNIQUE PRIMARY KEY, prefix TEXT, 
+                      next_game_start TEXT, next_game_interval INTEGER, announce_channel TEXT)''')
 
     def init_db_add(self, init_insert: list):
         """Insert/overwrite Initiative tracker data into the database.
@@ -64,7 +65,8 @@ class DatabaseIO:
         :param quote_search: Text to search for in existing quotes.
         :return: Return random quote, or failure message.
         """
-        self.c.execute('''SELECT quote FROM quotes where quote LIKE ? AND guild_id=?''', ("%" + str(quote_search) + "%", guild_id))
+        self.c.execute('''SELECT quote FROM quotes where quote LIKE ? AND guild_id=?''',
+                       ("%" + str(quote_search) + "%", guild_id))
         quote_text = self.c.fetchall()
         if len(quote_text) > 0:
             random_index = random.randint(0, len(quote_text) - 1)
@@ -88,18 +90,31 @@ class DatabaseIO:
 
     def next_game_db_get(self, guild_id):
         """Pulls Next Game date from the database."""
-        self.c.execute('''SELECT next_date FROM next_game where id=? and guild_id=?''', (1,guild_id))
+        self.c.execute('''SELECT next_date FROM next_game where guild_id=?''', (guild_id,))
         return self.c.fetchone()
 
     def next_game_db_add(self, output_date, guild_id: int):
         """Replaces current next game data with supplied new date.
 
-        :param output_date: Formatted date string."""
+        :param output_date: Formatted date string.
+        :param guild_id: Discord guild ID"""
         self.c.execute(
-            '''INSERT OR REPLACE INTO next_game(id, guild_id, created_date, next_date) VALUES(?,?,?,?)''',
-            (1, guild_id, arrow.now(UTC).timestamp,
+            '''INSERT OR REPLACE INTO next_game(guild_id, created_date, next_date) VALUES(?,?,?)''',
+            (guild_id, arrow.now(UTC).timestamp,
              output_date))
         self.bot_db.commit()
+
+    def next_game_get_defaults(self, guild_id: int):
+        """Gets the default next game start time and interval from the config database.
+
+        :param guild_id: Discord guild ID.
+        """
+        self.c.execute('''SELECT next_game_start, next_game_interval FROM config where guild_id=?''', (guild_id,))
+        return self.c.fetchone()
+
+    def next_game_get_all(self):
+        self.c.execute('''SELECT guild_id, next_date from next_game''')
+        return self.c.fetchall()
 
     def next_game_table_reset(self):
         """Deletes and recreates the Next Game table.
@@ -110,16 +125,39 @@ class DatabaseIO:
                       (id INTEGER PRIMARY KEY, created_date INTEGER, next_date INTEGER)''')
         self.bot_db.commit()
 
-    def config_load(self):
+    def config_all_prefix_load(self):
         """Loads config settings for all registered guilds."""
-        self.c.execute('''SELECT * FROM config''')
+        self.c.execute('''SELECT guild_id, prefix FROM config''')
         configs = self.c.fetchall()
-        return {k:v for k,v in configs}
+        return {k: v for k, v in configs}
 
-    def config_insert(self, guild_id: int, prefix: str):
-        """Adds or updates a guild's configured prefix."""
-        self.c.execute('''INSERT or REPLACE INTO config(guild_id, prefix) VALUES(?,?)''', (guild_id, prefix))
+    def config_insert_all(self, guild_id: int, prefix: str, default_time: str, default_interval: int,
+                          announce_channel: str):
+        """Creates DB row for new server with values."""
+        self.c.execute('''INSERT INTO config(guild_id, prefix, next_game_start, next_game_interval, announce_channel) 
+        VALUES(?,?,?,?,?)''', (guild_id, prefix, default_time, default_interval, announce_channel))
         self.bot_db.commit()
 
+    def config_prefix_update(self, guild_id: int, prefix: str):
+        """Adds or updates a guild's configured prefix."""
+        self.c.execute('''UPDATE config SET prefix=? WHERE guild_id=?''', (prefix, guild_id,))
+        self.bot_db.commit()
+
+    def config_next_game_default_time_update(self, guild_id: int, default_time: int):
+        """Adds or updates a guild's configured Next Game time."""
+        self.c.execute('''UPDATE config SET next_game_start=? WHERE guild_id=?''',
+                       (default_time, guild_id, ))
+        self.bot_db.commit()
+
+    def config_next_game_default_interval_update(self, guild_id: int, default_interval: int):
+        """Adds or updates a guild's configured default Next Game Interval."""
+        self.c.execute('''UPDATE config SET next_game_interval=? WHERE guild_id=?''',
+                       (default_interval, guild_id, ))
+        self.bot_db.commit()
+
+    def config_next_game_announce_channel(self, guild_id: int, announce_channel: str):
+        """Update's a server's configured channel for next game announcements."""
+        self.c.execute('''UPDATE config SET announce_channel=? WHERE guild_id=?''', (announce_channel, guild_id, ))
+        self.bot_db.commit()
 
 soulbot_db = DatabaseIO()
