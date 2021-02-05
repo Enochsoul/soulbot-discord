@@ -61,10 +61,15 @@ class NextGameScheduler(commands.Cog, name="Next Game Scheduler"):
         """Schedule command to set the default next game time/date.
         Default: 13:00MT 14 days from date command is run.
         """
-        default_date = arrow.now().replace(hour=13,
-                                           minute=0,
-                                           second=0,
-                                           microsecond=0).shift(days=14)
+        timezones = {"ET": ET, "CT": CT, "MT": MT, "PT": PT}
+        default_time_tz, default_interval = soulbot_db.next_game_get_defaults(ctx.guild.id)
+        def_time, def_tz = default_time_tz.split()
+        def_hour, def_minute = [int(i) for i in def_time.split(":")]
+        def_timezone = timezones[def_tz.upper()]
+        default_date = arrow.now(def_timezone).replace(hour=def_hour,
+                                                       minute=def_minute,
+                                                       second=0,
+                                                       microsecond=0).shift(days=default_interval)
         soulbot_db.next_game_db_add(default_date.to(UTC).timestamp, ctx.guild.id)
         next_game_embed = next_game_embed_template(default_date.to(UTC))
         await ctx.send(embed=next_game_embed)
@@ -87,7 +92,12 @@ class NextGameScheduler(commands.Cog, name="Next Game Scheduler"):
             elif (sch_day > 31) or (sch_month > 12) or (now.year != sch_year != now.year + 1):
                 await ctx.send("Please use the format: DD/MM/YYYY(EG: 05/31/2020)")
             else:
-                output_date = arrow.Arrow(sch_year, sch_month, sch_day, 13, 0, 0, 0, MT)
+                timezones = {"ET": ET, "CT": CT, "MT": MT, "PT": PT}
+                default_time_tz, _ = soulbot_db.next_game_get_defaults(ctx.guild.id)
+                def_time, def_tz = default_time_tz.split()
+                def_hour, def_minute = [int(i) for i in def_time.split(":")]
+                def_timezone = timezones[def_tz.upper()]
+                output_date = arrow.Arrow(sch_year, sch_month, sch_day, def_hour, def_minute, 0, 0, def_timezone)
                 soulbot_db.next_game_db_add(output_date.to(UTC).timestamp, ctx.guild.id)
                 next_game_embed = next_game_embed_template(output_date.to(UTC))
                 await ctx.send(f"Set next game date to {sch_day}/{sch_month}/{sch_year}"
@@ -135,7 +145,7 @@ class NextGameScheduler(commands.Cog, name="Next Game Scheduler"):
         :param ctx: Discord context object
         """
         if not toggle:
-            if self.game_announce.next_iteration is not None:
+            if self.game_Kannounce.next_iteration is not None:
                 await ctx.send("Game announcements are active.")
             else:
                 await ctx.send("Game announcements are not active.")
@@ -152,28 +162,24 @@ class NextGameScheduler(commands.Cog, name="Next Game Scheduler"):
     @tasks.loop(minutes=15)
     async def game_announce(self, ctx):
         """Discord task loop to check if the next game will start in the next 60 minutes."""
-        next_game_scheduled = arrow.get(soulbot_db.next_game_db_get(ctx.guild.id)[0])
-        countdown = next_game_scheduled - arrow.utcnow()
-        for channel in self.bot.get_all_channels():
-            if channel.name == "general":
-                general_channel = self.bot.get_channel(channel.id)
-                break
-        if countdown.seconds < 3600 and countdown.days == 0:
-            minutes, _ = divmod(countdown.seconds, 60)
-            self.game_announce.stop()
-            await general_channel.send(f"@here Next game in {minutes} minutes!\n"
-                                       f"Further announcements have been disabled.")
+        announce_check = soulbot_db.next_game_get_all()
+        for server in announce_check:
+            next_game_scheduled = arrow.get(server[1])
+            countdown = next_game_scheduled - arrow.utcnow()
+            for channel in self.bot.get_all_channels():
+                if channel.name == "general":
+                    general_channel = self.bot.get_channel(channel.id)
+                    break
+            if countdown.seconds < 3600 and countdown.days == 0:
+                minutes, _ = divmod(countdown.seconds, 60)
+                self.game_announce.stop()
+                await general_channel.send(f"@here Next game in {minutes} minutes!\n"
+                                           f"Further announcements have been disabled.")
 
     @set_date.error
     @set_time.error
     async def next_game_error(self, ctx, error):
         """Error catching for the cog."""
-        '''
-        if isinstance(error, commands.CommandInvokeError):
-            await ctx.send("Please use 24 hour time in the format: HH:MM TZ(Eg: 19:00 ET)")
-        elif isinstance(error, commands.CommandInvokeError):
-            await ctx.send("Please use the format: DD/MM/YYYY(EG: 05/31/2020)")
-        el'''
         if isinstance(error, commands.MissingRequiredArgument):
             await ctx.send("Please use 24 hour time in the format: HH:MM TZ(Eg: 19:00 ET)")
         else:
