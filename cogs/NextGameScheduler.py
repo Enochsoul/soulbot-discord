@@ -145,7 +145,7 @@ class NextGameScheduler(commands.Cog, name="Next Game Scheduler"):
         :param ctx: Discord context object
         """
         if not toggle:
-            if self.game_Kannounce.next_iteration is not None:
+            if self.game_announce.next_iteration is not None:
                 await ctx.send("Game announcements are active.")
             else:
                 await ctx.send("Game announcements are not active.")
