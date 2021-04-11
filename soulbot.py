@@ -78,6 +78,24 @@ async def next_game_interval(ctx, default_interval: int):
     await ctx.send(f'NextGameScheduler default game interval is now set to {default_interval} days.')
 
 
+@config.command(help='Configure the text channel to send the Next Game announcements to.  Default: general',
+                name='announce')
+async def next_game_announce_channel(ctx, channel_name: str):
+    """Command to set the channel Next Game announcements are sent to.
+
+    :param ctx: Discord context object.
+    :param channel_name: String name of channel.
+    """
+    all_channels = []
+    for channel in ctx.guild.text_channels:
+        all_channels.append(channel.name)
+    if channel_name in all_channels:
+        soulbot_db.config_next_game_announce_channel(ctx.guild.id, channel_name)
+        await ctx.send(f'Next Game Scheduler announcements will be sent to {channel_name}.')
+    else:
+        await ctx.send(f'{channel_name} is not a valid text channel.  Please try again.')
+
+
 @set_prefix.error
 @next_game_time.error
 @next_game_interval.error
@@ -120,15 +138,15 @@ async def game_announce():
     announce_check = soulbot_db.next_game_get_all_announcing()
     for server in announce_check:
         guild = bot.get_guild(server[0])
+        channel = discord.utils.get(guild.text_channels, name=soulbot_db.config_load_guild(guild.id)['announce_channel'])
         next_game_scheduled = arrow.get(server[1])
         countdown = next_game_scheduled - arrow.utcnow()
-        for channel in guild.text_channels:
-            if channel.name == "general":
-                if countdown.seconds < 3600 and countdown.days == 0:
-                    soulbot_db.next_game_announce_toggle(0, guild.id)
-                    minutes, _ = divmod(countdown.seconds, 60)
-                    await channel.send(f"@here Next game in {minutes} minutes!\n"
-                                       f"Further announcements have been disabled.")
+        if channel:
+            if countdown.seconds < 3600 and countdown.days == 0:
+                soulbot_db.next_game_announce_toggle(0, guild.id)
+                minutes, _ = divmod(countdown.seconds, 60)
+                await channel.send(f"@here Next game in {minutes} minutes!\n"
+                                   f"Further announcements have been disabled.")
 
 # =========================================================
 # Bot Start
