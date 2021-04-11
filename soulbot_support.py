@@ -170,6 +170,12 @@ class DatabaseIO:
         self.c.execute('''UPDATE config SET announce_channel=? WHERE guild_id=?''', (announce_channel, guild_id, ))
         self.bot_db.commit()
 
+    def config_load_guild(self, guild_id: int):
+        """Pull the saved config for the supplied guild_id."""
+        self.c.execute('''SELECT * from config WHERE guild_id=?''', (guild_id,))
+        keys = [col[0] for col in self.c.description]
+        return dict(zip(keys, self.c.fetchone()))
+
     def guild_remove_all(self, guild_id: int):
         """Function called when bot is removed from guild, cleans up all DB references."""
         self.c.execute('''DELETE from config where guild_id=?''', (guild_id,))
