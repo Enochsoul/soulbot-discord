@@ -3,7 +3,7 @@ import json
 import discord
 import arrow
 
-from discord.ext import commands
+from discord.ext import commands, tasks
 from soulbot_support import soulbot_db, UTC, ET, MT, CT, PT
 
 intents = discord.Intents.default()
@@ -46,7 +46,7 @@ async def set_prefix(ctx, prefix: str):
 
 @config.command(help='Set Next Game default start time.', name='time')
 async def next_game_time(ctx, default_time: str, default_timezone: str):
-    """Schedule command to change the time of the currently scheduled game.
+    """Command to set the default start time in the next_game module.
 
             :param default_time: Time string
             :param default_timezone: Timezone string
@@ -69,7 +69,7 @@ async def next_game_time(ctx, default_time: str, default_timezone: str):
 
 @config.command(help='Set Next Game default game interval in days.', name='interval')
 async def next_game_interval(ctx, default_interval: int):
-    """Schedule command to change the time of the currently scheduled game.
+    """Command to set the next_game module default interval.
 
             :param default_interval: Interval in days.
             :param ctx: Discord context object
@@ -109,15 +109,37 @@ async def on_guild_join(guild):
                                  bot_config['announce_channel'])
 
 
+@bot.event
+async def on_guild_remove(guild):
+    soulbot_db.guild_remove_all(guild.id)
+
+
+@tasks.loop(minutes=5)
+async def game_announce():
+    """Discord task loop to check if the next game will start in the next 60 minutes."""
+    announce_check = soulbot_db.next_game_get_all_announcing()
+    for server in announce_check:
+        guild = bot.get_guild(server[0])
+        next_game_scheduled = arrow.get(server[1])
+        countdown = next_game_scheduled - arrow.utcnow()
+        for channel in guild.text_channels:
+            if channel.name == "general":
+                if countdown.seconds < 3600 and countdown.days == 0:
+                    soulbot_db.next_game_announce_toggle(0, guild.id)
+                    minutes, _ = divmod(countdown.seconds, 60)
+                    await channel.send(f"@here Next game in {minutes} minutes!\n"
+                                       f"Further announcements have been disabled.")
+
 # =========================================================
 # Bot Start
 # =========================================================
+
 
 @bot.event
 async def on_ready():
     """Bot readiness indicator on the script console."""
     print(f"{bot.user.name} has connected to Discord.")
-
+    game_announce.start()
 
 if __name__ == "__main__":
     # bot.load_extension('CogAdmin')

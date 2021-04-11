@@ -18,7 +18,8 @@ class DatabaseIO:
                                       detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
         self.c = self.bot_db.cursor()
         self.c.execute('''CREATE TABLE IF NOT EXISTS next_game
-                      (guild_id INTEGER UNIQUE, created_date INTEGER, next_date INTEGER)''')
+                      (guild_id INTEGER UNIQUE, created_date INTEGER, next_date INTEGER, 
+                      announce_on INTEGER DEFAULT 0)''')
         self.c.execute('''CREATE TABLE IF NOT EXISTS quotes
                       (id INTEGER PRIMARY KEY, guild_id INTEGER, quote TEXT)''')
         self.c.execute('''CREATE TABLE IF NOT EXISTS initiative
@@ -90,7 +91,7 @@ class DatabaseIO:
 
     def next_game_db_get(self, guild_id):
         """Pulls Next Game date from the database."""
-        self.c.execute('''SELECT next_date FROM next_game where guild_id=?''', (guild_id,))
+        self.c.execute('''SELECT next_date, announce_on FROM next_game where guild_id=?''', (guild_id,))
         return self.c.fetchone()
 
     def next_game_db_add(self, output_date, guild_id: int):
@@ -104,6 +105,15 @@ class DatabaseIO:
              output_date))
         self.bot_db.commit()
 
+    def next_game_announce_toggle(self, state: int, guild_id: int):
+        """Toggles the announce_on for the given guild ID.
+
+        :param state: 0 or 1 integers
+        :param guild_id: Discord guild ID
+        """
+        self.c.execute('''UPDATE next_game SET announce_on=? where guild_id=?''', (state, guild_id,))
+        self.bot_db.commit()
+
     def next_game_get_defaults(self, guild_id: int):
         """Gets the default next game start time and interval from the config database.
 
@@ -112,8 +122,8 @@ class DatabaseIO:
         self.c.execute('''SELECT next_game_start, next_game_interval FROM config where guild_id=?''', (guild_id,))
         return self.c.fetchone()
 
-    def next_game_get_all(self):
-        self.c.execute('''SELECT guild_id, next_date from next_game''')
+    def next_game_get_all_announcing(self):
+        self.c.execute('''SELECT guild_id, next_date from next_game WHERE announce_on = 1''')
         return self.c.fetchall()
 
     def next_game_table_reset(self):
@@ -159,5 +169,14 @@ class DatabaseIO:
         """Update's a server's configured channel for next game announcements."""
         self.c.execute('''UPDATE config SET announce_channel=? WHERE guild_id=?''', (announce_channel, guild_id, ))
         self.bot_db.commit()
+
+    def guild_remove_all(self, guild_id: int):
+        """Function called when bot is removed from guild, cleans up all DB references."""
+        self.c.execute('''DELETE from config where guild_id=?''', (guild_id,))
+        self.c.execute('''DELETE from next_game where guild_id=?''', (guild_id,))
+        self.c.execute('''DELETE from quotes where guild_id=?''', (guild_id,))
+        self.c.execute('''DELETE from initiative where guild_id=?''', (guild_id,))
+        self.bot_db.commit()
+
 
 soulbot_db = DatabaseIO()
