@@ -1,7 +1,7 @@
 """Cog containing commands for controlling game schedule tracker."""
 import arrow
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from soulbot_support import soulbot_db, UTC, ET, MT, CT, PT
 
@@ -102,7 +102,7 @@ class NextGameScheduler(commands.Cog, name="Next Game Scheduler"):
                 next_game_embed = next_game_embed_template(output_date.to(UTC))
                 await ctx.send(f"Set next game date to {sch_day}/{sch_month}/{sch_year}"
                                f" at the default time.\nUse the **{ctx.prefix}next schedule time** "
-                               f"command if you want to change the time.",
+                               f"command if you want to change the time.\nAnnouncements are off.",
                                embed=next_game_embed)
         except ValueError:
             await ctx.send("Please use the format: DD/MM/YYYY(EG: 05/31/2020)")
@@ -133,7 +133,7 @@ class NextGameScheduler(commands.Cog, name="Next Game Scheduler"):
                                                                         second=0)
                 soulbot_db.next_game_db_add(output_date.to(UTC).timestamp, ctx.guild.id)
                 next_game_embed = next_game_embed_template(output_date.to(UTC))
-                await ctx.send("Next game time successfully set.", embed=next_game_embed)
+                await ctx.send("Next game time successfully set.\nAnnouncements are off.", embed=next_game_embed)
         except ValueError:
             await ctx.send("Please use 24 hour time in the format: HH:MM TZ(Eg: 19:00 ET)")
 
@@ -144,37 +144,20 @@ class NextGameScheduler(commands.Cog, name="Next Game Scheduler"):
         :param toggle: 'On' or 'Off' string
         :param ctx: Discord context object
         """
+        announce_state = soulbot_db.next_game_db_get(ctx.guild.id)[1]
         if not toggle:
-            if self.game_announce.next_iteration is not None:
+            if announce_state:
                 await ctx.send("Game announcements are active.")
             else:
                 await ctx.send("Game announcements are not active.")
         elif toggle.lower() == "off":
-            self.game_announce.stop()
-            self.game_announce.cancel()
+            soulbot_db.next_game_announce_toggle(0, ctx.guild.id)
             await ctx.send("Disabling next game announcements.")
         elif toggle.lower() == "on":
-            self.game_announce.start()
+            soulbot_db.next_game_announce_toggle(1, ctx.guild.id)
             await ctx.send("Enabling next game announcements.")
         else:
             await ctx.send("Please specify 'on' or 'off' to toggle game announcements.")
-
-    @tasks.loop(minutes=15)
-    async def game_announce(self, ctx):
-        """Discord task loop to check if the next game will start in the next 60 minutes."""
-        announce_check = soulbot_db.next_game_get_all()
-        for server in announce_check:
-            next_game_scheduled = arrow.get(server[1])
-            countdown = next_game_scheduled - arrow.utcnow()
-            for channel in self.bot.get_all_channels():
-                if channel.name == "general":
-                    general_channel = self.bot.get_channel(channel.id)
-                    break
-            if countdown.seconds < 3600 and countdown.days == 0:
-                minutes, _ = divmod(countdown.seconds, 60)
-                self.game_announce.stop()
-                await general_channel.send(f"@here Next game in {minutes} minutes!\n"
-                                           f"Further announcements have been disabled.")
 
     @set_date.error
     @set_time.error
