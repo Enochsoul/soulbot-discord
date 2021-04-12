@@ -98,7 +98,6 @@ class NextGameScheduler(commands.Cog, name="Next Game Scheduler"):
                 def_hour, def_minute = [int(i) for i in def_time.split(":")]
                 def_timezone = timezones[def_tz.upper()]
                 output_date = arrow.Arrow(sch_year, sch_month, sch_day, def_hour, def_minute, 0, 0, def_timezone)
-                print(output_date.to(UTC).int_timestamp, ctx.guild.id)
                 soulbot_db.next_game_db_add(output_date.to(UTC).int_timestamp, ctx.guild.id)
                 next_game_embed = next_game_embed_template(output_date.to(UTC))
                 await ctx.send(f"Set next game date to {sch_day}/{sch_month}/{sch_year}"
