@@ -101,7 +101,7 @@ class DatabaseIO:
         :param guild_id: Discord guild ID"""
         self.c.execute(
             '''INSERT OR REPLACE INTO next_game(guild_id, created_date, next_date) VALUES(?,?,?)''',
-            (guild_id, arrow.now(UTC).timestamp,
+            (guild_id, arrow.now(UTC).int_timestamp,
              output_date))
         self.bot_db.commit()
 

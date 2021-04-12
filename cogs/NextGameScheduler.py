@@ -70,7 +70,7 @@ class NextGameScheduler(commands.Cog, name="Next Game Scheduler"):
                                                        minute=def_minute,
                                                        second=0,
                                                        microsecond=0).shift(days=default_interval)
-        soulbot_db.next_game_db_add(default_date.to(UTC).timestamp, ctx.guild.id)
+        soulbot_db.next_game_db_add(default_date.to(UTC).int_timestamp, ctx.guild.id)
         next_game_embed = next_game_embed_template(default_date.to(UTC))
         await ctx.send(embed=next_game_embed)
 
@@ -88,9 +88,9 @@ class NextGameScheduler(commands.Cog, name="Next Game Scheduler"):
             sch_day, sch_month, sch_year = [int(i) for i in schedule_date.split('/')]
             now = arrow.now()
             if not schedule_date:
-                await ctx.send("Please use the format: DD/MM/YYYY(EG: 05/31/2020)")
+                await ctx.send("Please use the format: DD/MM/YYYY(EG: 31/05/2020)")
             elif (sch_day > 31) or (sch_month > 12) or (now.year != sch_year != now.year + 1):
-                await ctx.send("Please use the format: DD/MM/YYYY(EG: 05/31/2020)")
+                await ctx.send("Please use the format: DD/MM/YYYY(EG: 31/05/2020)")
             else:
                 timezones = {"ET": ET, "CT": CT, "MT": MT, "PT": PT}
                 default_time_tz, _ = soulbot_db.next_game_get_defaults(ctx.guild.id)
@@ -98,14 +98,15 @@ class NextGameScheduler(commands.Cog, name="Next Game Scheduler"):
                 def_hour, def_minute = [int(i) for i in def_time.split(":")]
                 def_timezone = timezones[def_tz.upper()]
                 output_date = arrow.Arrow(sch_year, sch_month, sch_day, def_hour, def_minute, 0, 0, def_timezone)
-                soulbot_db.next_game_db_add(output_date.to(UTC).timestamp, ctx.guild.id)
+                print(output_date.to(UTC).int_timestamp, ctx.guild.id)
+                soulbot_db.next_game_db_add(output_date.to(UTC).int_timestamp, ctx.guild.id)
                 next_game_embed = next_game_embed_template(output_date.to(UTC))
                 await ctx.send(f"Set next game date to {sch_day}/{sch_month}/{sch_year}"
                                f" at the default time.\nUse the **{ctx.prefix}next schedule time** "
                                f"command if you want to change the time.\nAnnouncements are off.",
                                embed=next_game_embed)
         except ValueError:
-            await ctx.send("Please use the format: DD/MM/YYYY(EG: 05/31/2020)")
+            await ctx.send("Please use the format: DD/MM/YYYY(EG: 31/05/2020)")
 
     @schedule.command(name="time",
                       help="Changes the time of the scheduled next game, "
@@ -131,7 +132,7 @@ class NextGameScheduler(commands.Cog, name="Next Game Scheduler"):
                                                                         minute=sch_minute,
                                                                         microsecond=0,
                                                                         second=0)
-                soulbot_db.next_game_db_add(output_date.to(UTC).timestamp, ctx.guild.id)
+                soulbot_db.next_game_db_add(output_date.to(UTC).int_timestamp, ctx.guild.id)
                 next_game_embed = next_game_embed_template(output_date.to(UTC))
                 await ctx.send("Next game time successfully set.\nAnnouncements are off.", embed=next_game_embed)
         except ValueError:
