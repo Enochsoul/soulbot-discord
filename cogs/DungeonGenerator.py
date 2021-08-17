@@ -8,17 +8,15 @@ with open('data/DungeonGen.json') as input:
     dungeongen_db = json.load(input)
 
 def embed_template(dungeon_desc:str, exits:list):
-    """Dungeon Generator embed template.
-    
-    """
+    """Dungeon Generator embed template."""
     embed_template = discord.Embed(title="**Dungeon Generator**",
-                                    description=f'```{dungeon_desc}```',
+                                    description={dungeon_desc},
                                     color=0xff0000)
     embed_template.add_field(name="__Exits:__",
                             value="",
                             inline=False)
     for exit in exits:
-        embed_template.add_field(name=f"{exit}",
+        embed_template.add_field(name={exit},
                                 value="",
                                 inline=True)
     return embed_template
@@ -29,13 +27,13 @@ class DungeonGen(commands.Cog, name="Dungeon Generator"):
     def __init__(self, bot) -> None:
         self.bot = bot
 
-    @commands.group(help="Generate a random dungeon room description and contents. Alias=dg.", alias=['dg',])
-    async def dungeongen(self, ctx):
+    @commands.group(help="Generate a random dungeon room description and contents.")
+    async def dg(self, ctx):
         if ctx.invoked_subcommand is None:
             await ctx.send(f"Additional arguments required, see "
                            f"**{ctx.prefix}help dg** for available options.")
     
-    @dungeongen.command(help="Generate a new room.")
+    @dg.command(help="Generate a new room.")
     async def new(self, ctx):
         atmosphere = random.choice(dungeongen_db['atmosphere'])
         floor = random.choice(dungeongen_db['floor'])
@@ -44,8 +42,12 @@ class DungeonGen(commands.Cog, name="Dungeon Generator"):
         exits = random.sample(dungeongen_db['exits'], random.randint(1,4))
         mobs = random.choice(dungeongen_db['mobs'])
         treasure = random.choice(dungeongen_db['treasure'])
-        dungeon_desc = f"{atmosphere}\n+{floor} + {walls_ceiling} + {furniture} + {mobs} + {treasure}"
-        await ctx.send(embed=embed_template(dungeon_desc, exits))
+        dungeon_desc = f"{atmosphere}\n{floor}\n{walls_ceiling}\n{furniture}\n{mobs}\n{treasure}"
+        print(dungeon_desc)
+        print(exits)
+        embed = embed_template(dungeon_desc, exits)
+        print(embed.description)
+        await ctx.send("Testing!")
 
 def setup(bot):
     """Discord module required setup for Cog loading."""
