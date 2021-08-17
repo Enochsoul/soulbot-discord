@@ -46,3 +46,7 @@ class DungeonGen(commands.Cog, name="Dungeon Generator"):
         treasure = random.choice(dungeongen_db['treasure'])
         dungeon_desc = f"{atmosphere}\n+{floor} + {walls_ceiling} + {furniture} + {mobs} + {treasure}"
         await ctx.send(embed=embed_template(dungeon_desc, exits))
+
+def setup(bot):
+    """Discord module required setup for Cog loading."""
+    bot.add_cog(DungeonGen(bot))
