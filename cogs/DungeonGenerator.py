@@ -20,8 +20,7 @@ def embed_template(ctx, dungeon_desc: str, exits: list):
                                inline=False)
     for e in exits:
         dungeongen_embed.add_field(name=f"{exits.index(e)+1}) {list(e.values())[0]}",
-                                   value="\n\u200b",
-                                   inline=True)
+                                   value="** **", inline=False)
     return dungeongen_embed
 
 
