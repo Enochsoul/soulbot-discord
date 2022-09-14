@@ -26,9 +26,10 @@ class DiceRoller(commands.Cog, name="Dice Roller"):
 
     @commands.command(help="Dice roller.  Expected format: NdN+N.(Ex: 2d6+2)")
     async def roll(self, ctx, *, dice_roll: str):
-        plus_modifier_pattern = "[0-9]+d[0-9]+\\+[0-9]+"
-        minus_modifier_pattern = "[0-9]+d[0-9]+\\-[0-9]+"
-        normal_pattern = "[0-9]+d[0-9]+"
+        plus_modifier_pattern = r"[0-9]+d[0-9]+\+[0-9]+"
+        minus_modifier_pattern = r"[0-9]+d[0-9]+\-[0-9]+"
+        normal_pattern = r"[0-9]+d[0-9]+"
+        dice_roll = dice_roll.lower()
         if re.fullmatch(plus_modifier_pattern, dice_roll):
             modifier = int(dice_roll.split("+")[1])
             dice = dice_roll.split("+")[0]
@@ -64,7 +65,8 @@ class DiceRoller(commands.Cog, name="Dice Roller"):
 
     @roll.error
     async def cog_command_error(self, ctx, error):
-        print(error)
+        if isinstance(error, commands.MissingRequiredArgument):
+            await ctx.send("Missing required input, Dice rolls should be in the format: NdN+N")
 
 
 def setup(bot):
