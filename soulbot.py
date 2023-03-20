@@ -8,6 +8,7 @@ from soulbot_support import soulbot_db, UTC, ET, MT, CT, PT
 
 intents = discord.Intents.default()
 intents.members = True
+intents.message_content = True
 
 with open('soulbot.conf', "r") as config:
     bot_config = json.load(config)
