@@ -161,7 +161,6 @@ async def on_ready():
     game_announce.start()
 
 if __name__ == "__main__":
-    # bot.load_extension('CogAdmin')
     bot.load_extension('DiceRoller')
     for cog in bot_config['load_cogs']:
         try:

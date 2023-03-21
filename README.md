@@ -1,13 +1,13 @@
 # soulbot-discord
-Version 2.0
+Version 3.0
 
 Discord bot for my 13th Age RPG group.
 
 A work in progress I made for my group, with no warranty implied or expressed.  I'm not a professional developer, so it's likely rough AF, but it works.  I usually squash bugs as my group finds them, if you find something please submit an issue on github.
 
-Designed to run as a standalone bot for a single discord server.  If you invite it to multiple servers all activity will be shared, so don't do that.
+Redesigned for 3.0, capable of running on multiple servers, with independant configuration, initiative tracking and quotes database.
 
-### Install(Updated in 2.0):
+### Install(Updated in 2.0, same for 3.0):
 1) git clone to your chosen location.
 2) Rename soulbot.conf.default to soulbot.conf.
 3) Fill out the discord token at minimum in the config file.  See below for other config file options.
@@ -18,11 +18,22 @@ Designed to run as a standalone bot for a single discord server.  If you invite 
 7) Go to Discord dev applications for your bot, enable Server Members Intent under the Bot section.
 7) Cog administration restricted to server admin/guild manager permissions.  
 
+### Docker Install(New for 3.0):
+I've included a Dockerfile if you want to build the bot into a docker image/container.  If you want to persist the database, I'll provide an example container creation below, but I'm super new with Docker, so use at your own risk.
+
+__To build(From the base repo folder):__
+
+docker build -t <image_name>:<tag> .
+
+__To create container:__
+1) Create volume: docker volume create <vol_name>
+2) Create container: docker run -v <vol_name>:/discordbot/data --name <bot_name> <image_name>:<tag> 
+
 ---  
-### Current Features:
+### Current Features(3.0):
 - Features modularized in Discord Cogs.  Notes below on how to add your own Cogs.
-    - Cog Administration Cog:
-        - Loads by default to manage other Cogs.
+    - Controlled by the config file in 3.0~~Cog Administration Cog:
+        - Loads by default to manage other Cogs.~~
     - Dice Roller Cog:
         - Loads by default, basic functionality.
         - Generates random number like rolling dice. Uses the format of NdN+N with highlighting of natural max rolls.  
@@ -63,7 +74,11 @@ Designed to run as a standalone bot for a single discord server.  If you invite 
         - Add quotations to the database.
         - Recall random quotations from the database.
         - Search for text and display a random quote with matching text.
-
+    - Config Commands:
+      - Set the next game announce channel.
+      - Set default interval to next game in days.
+      - Set default start time of next game.
+      - Set bot prefix.
 ---
 ### Configuration File(New in 2.0):
 
@@ -89,6 +104,6 @@ The options are as follows:
 ---
 ### Cogs(New in 2.0):
 
-Want to load your own Cogs?  Place the .py file in the cogs folder, and use the Cogs Admin module to load it and/or configure it to load on start.  No bot restart required.  
+Want to load your own Cogs?  Place the .py file in the cogs folder, configure it to load in the config file and restart the bot.  
 
 I don't guarantee that any other cogs will work, but they should if they are written for the python discord module.  This is just a side effect of how I decided to implement Cog loading.  Use at your own risk.  
