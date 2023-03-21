@@ -8,6 +8,7 @@ from soulbot_support import soulbot_db, UTC, ET, MT, CT, PT
 
 intents = discord.Intents.default()
 intents.members = True
+intents.message_content = True
 
 with open('soulbot.conf', "r") as config:
     bot_config = json.load(config)
@@ -164,6 +165,7 @@ if __name__ == "__main__":
     bot.load_extension('DiceRoller')
     for cog in bot_config['load_cogs']:
         try:
+            print(f"Loading {cog}")
             bot.load_extension(f'cogs.{cog}')
         except commands.ExtensionNotLoaded as cog_error:
             print(f'There was a problem loading Cog {cog}.\nException:\n{cog_error}')
