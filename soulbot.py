@@ -158,7 +158,10 @@ async def game_announce():
 async def on_ready():
     """Bot readiness indicator on the script console."""
     print(f"{bot.user.name} has connected to Discord.")
-    game_announce.start()
+    try:
+        game_announce.start()
+    except RuntimeError:
+        pass
 
 if __name__ == "__main__":
     bot.load_extension('DiceRoller')
