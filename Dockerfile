@@ -2,7 +2,7 @@ FROM python:3.10
 
 WORKDIR ./discordbot
 
-RUN git clone -b multi-dev https://github.com/Enochsoul/soulbot-discord.git .
+RUN git clone -b main https://github.com/Enochsoul/soulbot-discord.git .
 
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
