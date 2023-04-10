@@ -12,7 +12,8 @@ build/
 .idea/
 
 data/*
-!data/.gitkeep
+!data/decks
+
 *.conf
 
 .vscode/
