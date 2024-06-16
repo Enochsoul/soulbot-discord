@@ -9,6 +9,7 @@ from soulbot import bot as init_bot
 
 class InitiativeTrack:
     """Class definition for the Initiative tracking object."""
+
     def __init__(self):
         self.combatant_dict = {}
         self.tracker = []
@@ -41,17 +42,15 @@ class InitiativeTrack:
 
     def embed_template(self):
         """Initiative tracker embed generator."""
-        tab_tracker = tabulate(self.tracker,
-                               headers=["Active", "Player", "Initiative"],
-                               tablefmt="fancy_grid")
-        embed_template = discord.Embed(title="Initiative Order:",
-                                       description=f'```{tab_tracker}```',
-                                       color=0xff0000)
+        init_table = tabulate(self.tracker,
+                              headers=["Active", "Player", "Initiative"],
+                              tablefmt="fancy_grid")
+        embed_template = discord.Embed(colour=discord.Colour.red())
         embed_template.add_field(name="Tracker Active",
                                  value=f"{self.tracker_active}")
         embed_template.add_field(name="Escalation Die",
                                  value=f"{self.escalation}")
-        return embed_template
+        return embed_template, f'```{init_table}```'
 
 
 init_obj = {}
@@ -64,10 +63,11 @@ for k in guild_list:
 async def on_guild_join(guild):
     global init_obj
     init_obj[guild.id] = InitiativeTrack()
-    
+
 
 class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
     """Class definition for Initiative Tracker Cog."""
+
     def __init__(self, bot):
         self.bot = bot
 
@@ -115,13 +115,13 @@ class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
             soulbot_db.init_db_reset(ctx.guild.id)
             soulbot_db.init_db_add(db_insert)
             soulbot_db.init_db_commit()
-            embed = init_obj[ctx.guild.id].embed_template()
-            await ctx.send(embed=embed)
+            embed, table = init_obj[ctx.guild.id].embed_template()
+            await ctx.send(table, embed=embed)
 
     @init.command(help="Shows current turn order, rolls and tracker status.")
     async def show(self, ctx):
-        embed = init_obj[ctx.guild.id].embed_template()
-        await ctx.send(embed=embed)
+        embed, table = init_obj[ctx.guild.id].embed_template()
+        await ctx.send(table, embed=embed)
 
     @init.command(name='next', help="Advances the initiative order.")
     async def next_turn(self, ctx):
@@ -129,16 +129,16 @@ class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
             if init_obj[ctx.guild.id].turn.index('--->') < len(init_obj[ctx.guild.id].combatant_dict) - 1:
                 init_obj[ctx.guild.id].turn.insert(0, init_obj[ctx.guild.id].turn.pop(-1))
                 init_obj[ctx.guild.id].tracker = init_obj[ctx.guild.id].build_init_table()
-                embed = init_obj[ctx.guild.id].embed_template()
-                await ctx.send("Beginning next turn.", embed=embed)
+                embed, table = init_obj[ctx.guild.id].embed_template()
+                await ctx.send(f"Beginning next turn.\n{table}", embed=embed)
             elif init_obj[ctx.guild.id].turn.index('--->') == len(init_obj[ctx.guild.id].combatant_dict) - 1:
                 init_obj[ctx.guild.id].turn.insert(0, init_obj[ctx.guild.id].turn.pop(-1))
                 init_obj[ctx.guild.id].tracker = init_obj[ctx.guild.id].build_init_table()
                 init_obj[ctx.guild.id].escalation += 1
                 if init_obj[ctx.guild.id].escalation > 6:
                     init_obj[ctx.guild.id].escalation = 6
-                embed = init_obj[ctx.guild.id].embed_template()
-                await ctx.send("Beginning next combat round.", embed=embed)
+                embed, table = init_obj[ctx.guild.id].embed_template()
+                await ctx.send(f"Beginning next combat round.\n{table}", embed=embed)
         else:
             await ctx.send(f"Tracker not active, use **{ctx.prefix}init start** to begin.")
 
@@ -165,11 +165,11 @@ class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
             soulbot_db.init_db_reset(ctx.guild.id)
             soulbot_db.init_db_add(db_insert)
             soulbot_db.init_db_commit()
-            embed = init_obj[ctx.guild.id].embed_template()
+            embed, table = init_obj[ctx.guild.id].embed_template()
             await ctx.send(
                 f"Initiative for {ctx.author.display_name} has been delayed to "
                 f"{init_obj[ctx.guild.id].combatant_dict[ctx.author.display_name]}. "
-                f"Initiative order has been recalculated.", embed=embed)
+                f"Initiative order has been recalculated.\n{table}", embed=embed)
 
     @init.group(case_insensitive=True, help="Commands for the DM.", name="dm")
     @commands.has_role("DM" or "GM")
@@ -298,8 +298,8 @@ class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
                 if name in sublist:
                     init_obj[ctx.guild.id].turn[init_obj[ctx.guild.id].tracker.index(sublist)] = '--->'
                     init_obj[ctx.guild.id].tracker = init_obj[ctx.guild.id].build_init_table()
-            embed = init_obj[ctx.guild.id].embed_template()
-            await ctx.send(f"{name} is now the active combatant.", embed=embed)
+            embed, table = init_obj[ctx.guild.id].embed_template()
+            await ctx.send(f"{name} is now the active combatant.\n{table}", embed=embed)
 
     @dm_group.command(
         help="DON'T DO THIS UNLESS YOU MEAN IT. "
@@ -311,8 +311,8 @@ class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
         init_obj[ctx.guild.id].combatant_dict = {_[0]: _[1] for _ in all_rows}
         init_obj[ctx.guild.id].turn = ['    ' for _ in range(1, len(init_obj[ctx.guild.id].combatant_dict) + 1)]
         init_obj[ctx.guild.id].tracker = init_obj[ctx.guild.id].build_init_table()
-        embed = init_obj[ctx.guild.id].embed_template()
-        await ctx.send("Initiative tracker has been reset and rebuilt from the backup database.",
+        embed, table = init_obj[ctx.guild.id].embed_template()
+        await ctx.send(f"Initiative tracker has been reset and rebuilt from the backup database.\n{table}",
                        embed=embed)
 
     @dm_group.error
