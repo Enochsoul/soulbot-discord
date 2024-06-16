@@ -216,12 +216,14 @@ class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
                            f"{init_obj[ctx.guild.id].combatant_dict[npc_name]}.")
 
     @dm_group.command(help="Allows DM to manipulate the Escalation Die.  "
-                           "Value can be plus or minus.")
-    async def escalate(self, ctx, value_change: int):
+                           "Value can be plus or minus.  Default = 1")
+    async def escalate(self, ctx, value_change: int = 1):
         if init_obj[ctx.guild.id].tracker_active is True:
             init_obj[ctx.guild.id].escalation = init_obj[ctx.guild.id].escalation + value_change
             if init_obj[ctx.guild.id].escalation > 6:
                 init_obj[ctx.guild.id].escalation = 6
+            elif init_obj[ctx.guild.id].escalation < 0:
+                init_obj[ctx.guild.id].escalation = 0
             await ctx.send(f"Escalation die is now {init_obj[ctx.guild.id].escalation}")
         else:
             await ctx.send(f"Tracker not active, use **{ctx.prefix}init start** to begin.")
