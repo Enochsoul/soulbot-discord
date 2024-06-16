@@ -39,25 +39,26 @@ class DiceRoller(commands.Cog, name="Dice Roller"):
 
     @commands.command(help="Dice roller.  Expected format: NdN+N.(Ex: 2d6+2)")
     async def roll(self, ctx, *, dice_roll: str):
-        plus_modifier_pattern = "[0-9]+d[0-9]+\\+[0-9]+"
-        minus_modifier_pattern = "[0-9]+d[0-9]+\\-[0-9]+"
-        normal_pattern = "[0-9]+d[0-9]+"
-        if re.fullmatch(plus_modifier_pattern, dice_roll):
-            modifier = int(dice_roll.split("+")[1])
-            dice = dice_roll.split("+")[0]
-            result_list, result_total = die_roll(int(dice.split("d")[0]), int(dice.split("d")[1]))
-            await ctx.send(f"{ctx.author.mention} rolled **{result_total + modifier}**."
-                           f" ({result_list}+{modifier})")
-        elif re.fullmatch(minus_modifier_pattern, dice_roll):
-            modifier = int(dice_roll.split("-")[1])
-            dice = dice_roll.split("-")[0]
-            result_list, result_total = die_roll(int(dice.split("d")[0]), int(dice.split("d")[1]))
-            await ctx.send(f"{ctx.author.mention} rolled **{result_total - modifier}**."
-                           f" ({result_list}-{modifier})")
-        elif re.fullmatch(normal_pattern, dice_roll):
-            dice = dice_roll.split("+")[0]
-            result_list, result_total = die_roll(int(dice.split("d")[0]), int(dice.split("d")[1]))
-            if int(dice.split("d")[0]) == 1:
+        plus_mod_re = re.compile(r"^(?P<dice_count>[0-9]+)([dD])(?P<dice_size>[0-9]+)\s*\+\s*(?P<modifier>[0-9]+)$")
+        minus_mod_re = re.compile(r"^(?P<dice_count>[0-9]+)([dD])(?P<dice_size>[0-9]+)\s*-\s*(?P<modifier>[0-9]+)$")
+        normal_re = re.compile(r"^(?P<dice_count>[0-9]+)([dD])(?P<dice_size>[0-9]+)$")
+        plus_match = plus_mod_re.match(dice_roll)
+        minus_match = minus_mod_re.match(dice_roll)
+        normal_match = normal_re.match(dice_roll)
+        if plus_match:
+            result_list, result_total = die_roll(int(plus_match.groupdict()['dice_count']),
+                                                 int(plus_match.groupdict()['dice_size']))
+            await ctx.send(f"{ctx.author.mention} rolled **{result_total + int(plus_match.groupdict()['modifier'])}**."
+                           f" ({result_list}+{plus_match.groupdict()['modifier']})")
+        elif minus_match:
+            result_list, result_total = die_roll(int(minus_match.groupdict()['dice_count']),
+                                                 int(minus_match.groupdict()['dice_size']))
+            await ctx.send(f"{ctx.author.mention} rolled **{result_total - int(minus_match.groupdict()['modifier'])}**."
+                           f" ({result_list}-{minus_match.groupdict()['modifier']})")
+        elif normal_match:
+            result_list, result_total = die_roll(int(normal_match.groupdict()['dice_count']),
+                                                 int(normal_match.groupdict()['dice_size']))
+            if int(normal_match.groupdict()['dice_count']) == 1:
                 await ctx.send(f"{ctx.author.mention} rolled **{result_total}**.")
             else:
                 await ctx.send(f"{ctx.author.mention} rolled **{result_total}**. ({result_list})")
