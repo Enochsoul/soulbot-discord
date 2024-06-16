@@ -39,8 +39,8 @@ class DiceRoller(commands.Cog, name="Dice Roller"):
 
     @commands.command(help="Dice roller.  Expected format: NdN+N.(Ex: 2d6+2)")
     async def roll(self, ctx, *, dice_roll: str):
-        plus_mod_re = re.compile(r"^(?P<dice_count>[0-9]+)([dD])(?P<dice_size>[0-9]+)\s*\+\s*(?P<modifier>[0-9]+)$")
-        minus_mod_re = re.compile(r"^(?P<dice_count>[0-9]+)([dD])(?P<dice_size>[0-9]+)\s*-\s*(?P<modifier>[0-9]+)$")
+        plus_mod_re = re.compile(r"^(?P<dice_count>[0-9]+)([dD])(?P<dice_size>[0-9]+)\s?\+\s?(?P<modifier>[0-9]+)$")
+        minus_mod_re = re.compile(r"^(?P<dice_count>[0-9]+)([dD])(?P<dice_size>[0-9]+)\s?-\s?(?P<modifier>[0-9]+)$")
         normal_re = re.compile(r"^(?P<dice_count>[0-9]+)([dD])(?P<dice_size>[0-9]+)$")
         plus_match = plus_mod_re.match(dice_roll)
         minus_match = minus_mod_re.match(dice_roll)
