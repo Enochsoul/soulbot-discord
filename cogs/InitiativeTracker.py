@@ -57,7 +57,7 @@ class InitiativeTrack:
 init_obj = InitiativeTrack()
 
 
-class InitiativeTracker(commands.Cog, name="Initiative Tracker"):
+class InitiativeTracker(discord.Cog, name='Initiative Tracker'):
     """Class definition for Initiative Tracker Cog."""
 
     def __init__(self, bot):

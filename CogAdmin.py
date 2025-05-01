@@ -10,9 +10,8 @@ from tabulate import tabulate
 from soulbot import bot_config
 
 
-class CogAdmin(commands.Cog, name='Cog Admin'):
-    """Class definition for administrating Cogs, inherits from discord extension Cog class.
-    """
+class CogAdmin(discord.Cog, name='Cog Admin'):
+    """Class definition for administrating Cogs, inherits from discord extension Cog class."""
 
     def __init__(self, bot):
         self.bot = bot
@@ -59,9 +58,9 @@ class CogAdmin(commands.Cog, name='Cog Admin'):
         """
         try:
             self.bot.load_extension(f'cogs.{cog}')
-        except commands.ExtensionAlreadyLoaded:
+        except discord.ExtensionAlreadyLoaded:
             await ctx.send(f'{cog} is already loaded.')
-        except commands.ExtensionNotFound:
+        except discord.ExtensionNotFound:
             await ctx.send(f'{cog} not found.')
         except Exception as e:
             await ctx.send(f'Error: {e}')
@@ -78,7 +77,7 @@ class CogAdmin(commands.Cog, name='Cog Admin'):
         """
         try:
             self.bot.unload_extension(f'cogs.{cog}')
-        except commands.ExtensionNotFound:
+        except discord.ExtensionNotFound:
             await ctx.send(f'{cog} not found.')
         except Exception as e:
             await ctx.send(f'Error: {e}')
@@ -96,11 +95,11 @@ class CogAdmin(commands.Cog, name='Cog Admin'):
         try:
             self.bot.unload_extension(f'cogs.{cog}')
             self.bot.load_extension(f'cogs.{cog}')
-        except commands.ExtensionAlreadyLoaded:
+        except discord.ExtensionAlreadyLoaded:
             await ctx.send(f'{cog} is already loaded.')
-        except commands.ExtensionNotFound:
+        except discord.ExtensionNotFound:
             await ctx.send(f'{cog} not found.')
-        except commands.ExtensionNotLoaded:
+        except discord.ExtensionNotLoaded:
             await ctx.send(f"{cog} wasn't loaded, please load it first.")
         except Exception as e:
             await ctx.send(f'Error: {e}')

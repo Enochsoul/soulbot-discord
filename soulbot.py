@@ -1,7 +1,8 @@
 """A discord bot with commands used to assist game play for the 13th Age RPG."""
 
 import json
-from discord import ExtensionNotLoaded, ExtensionFailed
+
+import discord
 from discord.ext import commands
 
 with open('soulbot.conf', 'r') as config:
@@ -57,9 +58,9 @@ if __name__ == '__main__':
     for cog in bot_config['load_cogs']:
         try:
             bot.load_extension(f'cogs.{cog}')
-        except ExtensionNotLoaded as cog_error:
+        except discord.ExtensionNotLoaded as cog_error:
             print(f'There was a problem loading Cog {cog}.\nException:\n{cog_error}')
-        except ExtensionFailed as cog_error:
+        except discord.ExtensionFailed as cog_error:
             print(f'There was an unexpected error loading {cog}:\n{cog_error}')
         except Exception as cog_error:
             print(f'There was an unexpected error loading {cog}:\n{cog_error}')

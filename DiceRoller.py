@@ -23,7 +23,7 @@ else:
     from default_dice import die_roll
 
 
-class DiceRoller(commands.Cog, name="Dice Roller"):
+class DiceRoller(commands.Cog, name='Dice Roller'):
     """Class definition for DiceRoller Cog."""
 
     def __init__(self, bot):

@@ -42,7 +42,7 @@ class ChaosMageTracker:
 chaos_mages = ChaosMageTracker()
 
 
-class ChaosMageCommands(commands.Cog, name="Chaos Mage Commands"):
+class ChaosMageCommands(discord.Cog, name='Chaos Mage Commands'):
     """Class definition for the Discord Cog controlling the Chaos Mage commands."""
 
     def __init__(self, bot):

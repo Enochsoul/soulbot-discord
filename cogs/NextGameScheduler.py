@@ -39,7 +39,7 @@ def next_game_embed_template(input_date):
     return output_embed
 
 
-class NextGameScheduler(commands.Cog, name="Next Game Scheduler"):
+class NextGameScheduler(discord.Cog, name='Next Game Scheduler'):
     """Class definition for Next Game Scheduler Cog, inherits from discord extension Cog class."""
 
     def __init__(self, bot):
