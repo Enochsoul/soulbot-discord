@@ -1,4 +1,5 @@
 """Module for random dice rolling via random number arrays."""
+
 import random
 
 rand_arrays = {
@@ -6,7 +7,8 @@ rand_arrays = {
     'd12': [random.randint(1, 12) for _ in range(1000)],
     'd10': [random.randint(1, 10) for _ in range(1000)],
     'd8': [random.randint(1, 8) for _ in range(1000)],
-    'd6': [random.randint(1, 6) for _ in range(1000)]}
+    'd6': [random.randint(1, 6) for _ in range(1000)],
+}
 
 
 def die_roll(die_count, die_size):
@@ -35,6 +37,6 @@ def die_roll(die_count, die_size):
         for i in range(0, die_count):
             result.append(random.randint(1, die_size))
     total = sum(result)
-    bold_item = [f"**{item}**" if item == die_size else str(item) for item in result]
-    result_list = "+".join(bold_item)
+    bold_item = [f'**{item}**' if item == die_size else str(item) for item in result]
+    result_list = '+'.join(bold_item)
     return result_list, total

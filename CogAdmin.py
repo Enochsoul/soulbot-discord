@@ -1,11 +1,12 @@
 """Cog used for administration of the all other bot Cogs."""
 
-import os
 import json
+import os
 
 import discord
 from discord.ext import commands
 from tabulate import tabulate
+
 from soulbot import bot_config
 
 
@@ -21,8 +22,10 @@ class CogAdmin(commands.Cog, name='Cog Admin'):
     async def cogs_group(self, ctx):
         """Base level cogs group command, returns error to the channel if command is incomplete."""
         if ctx.invoked_subcommand is None:
-            await ctx.send(f"Additional arguments required, "
-                           f"see **{ctx.prefix}help cogs** for available options.")
+            await ctx.send(
+                f'Additional arguments required, '
+                f'see **{ctx.prefix}help cogs** for available options.'
+            )
 
     @cogs_group.command(help='List available Cogs.', name='list')
     async def list_cogs(self, ctx):
@@ -30,7 +33,7 @@ class CogAdmin(commands.Cog, name='Cog Admin'):
         cogs_list = [cog.split('.')[0] for cog in os.listdir('cogs') if '.py' in cog]
         cog_status = []
         for cog in cogs_list:
-            expanded_cog = ''.join(map(lambda x: x if x.islower() else " " + x, cog)).strip()
+            expanded_cog = ''.join(map(lambda x: x if x.islower() else ' ' + x, cog)).strip()
             if self.bot.get_cog(expanded_cog) is None:
                 loaded = False
             else:
@@ -40,10 +43,10 @@ class CogAdmin(commands.Cog, name='Cog Admin'):
             else:
                 startup = False
             cog_status.append([cog, loaded, startup])
-        cogs_table = tabulate(cog_status,
-                              headers=['Cog Name', 'Loaded?', 'Startup?'],
-                              tablefmt='simple')
-        embed = discord.Embed(title="Available Cogs:", description=f'```{cogs_table}```')
+        cogs_table = tabulate(
+            cog_status, headers=['Cog Name', 'Loaded?', 'Startup?'], tablefmt='simple'
+        )
+        embed = discord.Embed(title='Available Cogs:', description=f'```{cogs_table}```')
         await ctx.send(embed=embed)
 
     @cogs_group.command(help='Activate a Cog. Case sensitive.', name='load')

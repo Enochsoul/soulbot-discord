@@ -1,4 +1,5 @@
 """Module for using randint to generate die rolls."""
+
 import random
 
 
@@ -18,6 +19,6 @@ def die_roll(die_count, die_size):
         result.append(random.randint(1, die_size))
         count -= 1
     total = sum(result)
-    bold_item = [f"**{item}**" if item == die_size else str(item) for item in result]
-    result_list = "+".join(bold_item)
+    bold_item = [f'**{item}**' if item == die_size else str(item) for item in result]
+    result_list = '+'.join(bold_item)
     return result_list, total
