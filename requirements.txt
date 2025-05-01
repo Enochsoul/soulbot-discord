@@ -15,11 +15,9 @@ isort==5.5.2
 lazy-object-proxy==1.5.1
 mccabe==0.6.1
 multidict==4.7.6
-pip==24.2
 py-cord==2.6.0
 python-dateutil==2.8.2
 requests==2.31.0
-setuptools==72.1.0
 six==1.15.0
 snowballstemmer==2.0.0
 tabulate==0.8.7
@@ -28,6 +26,5 @@ types-python-dateutil==2.9.0.20240906
 typing-extensions==4.3.0
 urllib3==2.0.7
 websockets==9.1
-wheel==0.44.0
 wrapt==1.12.1
 yarl==1.11.1
