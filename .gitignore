@@ -12,10 +12,15 @@ build/
 .idea/
 
 data/*
-!data/.gitkeep
+!data/decks
+
 *.conf
 
+<<<<<<< HEAD
 .env
 .vscode/
 .zed/
 ruff.toml
+=======
+.vscode/
+>>>>>>> main

@@ -3,5 +3,8 @@
   "command_prefix": "!",
   "load_cogs": [],
   "dice_roller": "default",
-  "random_org_key": ""
+  "random_org_key": "",
+  "next_game_time": "15:00 MT",
+  "next_game_interval": "14",
+  "announce_channel": "general"
 }
