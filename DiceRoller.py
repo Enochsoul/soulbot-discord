@@ -3,6 +3,7 @@
 import random
 import re
 
+import discord
 from discord.ext import commands, tasks
 
 from soulbot import bot_config
@@ -23,7 +24,7 @@ else:
     from default_dice import die_roll
 
 
-class DiceRoller(commands.Cog, name='Dice Roller'):
+class DiceRoller(discord.Cog, name='Dice Roller'):
     """Class definition for DiceRoller Cog."""
 
     def __init__(self, bot):
