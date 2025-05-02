@@ -154,7 +154,7 @@ class CogAdmin(discord.Cog, name='Cog Admin'):
     @load_cog.error
     async def cog_command_error(self, ctx, error):
         """Sends any command errors to the channel."""
-        await ctx.send(error)
+        await ctx.send(str(error))
 
 
 def setup(bot):
