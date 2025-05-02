@@ -4,7 +4,7 @@ arrow==1.2.2
 astroid==2.12.2
 async-timeout==4.0.2
 attrs==22.1.0
-certifi==2022.12.7
+certifi==2023.7.22  # Updated due to CVE-2023-37920
 chardet==5.0.0
 charset-normalizer==2.1.1
 colorama==0.4.5
@@ -14,15 +14,15 @@ isort==5.10.1
 lazy-object-proxy==1.7.1
 mccabe==0.7.0
 multidict==6.0.2
-py-cord==2.0.1
+py-cord==2.6.1
 python-dateutil==2.8.2
-requests==2.28.1
+requests==2.31.0  # Updated due to CVE-2023-32681
 six==1.16.0
 snowballstemmer==2.2.0
 tabulate==0.9.0
 toml==0.10.2
 typing_extensions==4.3.0
-urllib3==1.26.12
+urllib3==1.26.18  # Updated due to CVE-2023-45803
 websockets==10.3
 wrapt==1.14.1
 yarl==1.8.1
