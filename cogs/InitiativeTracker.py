@@ -241,9 +241,7 @@ class InitiativeTracker(discord.Cog, name='Initiative Tracker'):
         if name not in init_obj.combatant_dict:
             await ctx.send(f'{name} is not in the initiative order.')
         elif init_obj.tracker_active:
-            for sublist in init_obj.tracker:
-                if '--->' in sublist:
-                    active_user = init_obj.tracker[init_obj.tracker.index(sublist)][1]
+            active_user = next((row[1] for row in init_obj.tracker if '--->' in row), None)
             if active_user == name:
                 await ctx.send(
                     f'{name} is the active combatant, please advance the turn before removing them.'
