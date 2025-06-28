@@ -16,11 +16,7 @@ data/*
 
 *.conf
 
-<<<<<<< HEAD
 .env
 .vscode/
 .zed/
 ruff.toml
-=======
-.vscode/
->>>>>>> main
