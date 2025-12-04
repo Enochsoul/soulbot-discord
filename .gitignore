@@ -10,13 +10,10 @@ dist/
 build/
 .egg-ingo
 .idea/
-
+.vscode/
+.zed/
+.ropeproject/
 data/*
 !data/decks
 
 *.conf
-
-.env
-.vscode/
-.zed/
-ruff.toml
