@@ -405,63 +405,92 @@ class InitiativeTracker(discord.Cog, name='Initiative Tracker'):
             print(error)
             await ctx.send('A unknown error has occurred, do you know where your towel is?')
 
-    @commands.command(
-        help='Rolls 1d20 + supplied player bonus(Stat + Level) '
-        'to attack, command automatically includes '
-        'escalation die(if any). Default bonus = 0'
-    )
-    async def attack(self, ctx, bonus: int = 0):
-        crit = ':x:'
-        crit_range_plus2 = ':x:'
-        crit_range_plus4 = ':x:'
-        attack_roll = die_roll(1, 20)
-        attack_natural = attack_roll[1]
-        attack_modified = attack_natural + bonus + init_obj[ctx.guild.id].escalation
-        if attack_natural == 20:
-            crit = ':white_check_mark:'
-        if attack_natural >= 18:
-            crit_range_plus2 = ':white_check_mark:'
-        if attack_natural >= 16:
-            crit_range_plus4 = ':white_check_mark:'
-        math = f'|| ({attack_natural} + {bonus} + {init_obj[ctx.guild.id].escalation} = {attack_modified}) ||'
-        attack_embed = discord.Embed(
-            title='__**Attack Result**__', description=f'{attack_modified}\n{math}', color=0x0000FF
-        )
-        attack_embed.add_field(name='Natural Roll', value=f'{attack_natural}', inline=False)
-        attack_embed.add_field(name='Natural Crit', value=f'{crit}', inline=True)
-        attack_embed.add_field(name='+2 Crit Range', value=f'{crit_range_plus2}', inline=True)
-        attack_embed.add_field(name='+4 Crit Range', value=f'{crit_range_plus4}', inline=True)
-        attack_embed.add_field(name='Escalation', value=f'{init_obj[ctx.guild.id].escalation}')
-        await ctx.send(f'{ctx.author.mention} rolled to attack.', embed=attack_embed)
+            await ctx.send("A unknown error has occurred, do you know where your towel is?")
 
     @commands.command(
-        help='Rolls 1d20 + supplied NPC bonus to attack, '
-        'excludes escalation die. Default bonus = 0',
-        name='attacknpc',
+        help="Rolls 1d20 + supplied player bonus(Stat + Level) "
+        "to attack, command automatically includes "
+        "escalation die(if any). Default bonus = 0"
     )
-    async def attack_npc(self, ctx, bonus: int = 0):
-        crit = ':x:'
-        crit_range_plus2 = ':x:'
-        crit_range_plus4 = ':x:'
-        attack_roll = die_roll(1, 20)
-        attack_natural = attack_roll[1]
-        attack_modified = attack_natural + bonus
-        if attack_natural == 20:
-            crit = ':white_check_mark:'
-        if attack_natural >= 18:
-            crit_range_plus2 = ':white_check_mark:'
-        if attack_natural >= 16:
-            crit_range_plus4 = ':white_check_mark:'
-        math = f'|| ({attack_natural} + {bonus} = {attack_modified}) ||'
+    async def attack(self, ctx, bonus: int = 0, roll_type: str = "d"):
+        """Roll an attack with the specified bonus and roll type."""
+        # Valid roll types mapping
+        valid_roll_types = {"d": "1d20", "ad": "1ad20", "dd": "1dd20"}
+
+        # Validate roll type
+        if roll_type not in valid_roll_types:
+            await ctx.send(f"Invalid roll type: {roll_type}. Valid types are: {', '.join(valid_roll_types.keys())}")
+            return
+
+        # Roll the dice
+        attack_natural = die_roll.roll(valid_roll_types[roll_type]).total
+        escalation = init_obj[ctx.guild.id].escalation
+        attack_modified = attack_natural + bonus + escalation
+
+        # Determine crit status
+        crit_indicators = {
+            "natural": ":white_check_mark:" if attack_natural == 20 else ":x:",
+            "plus2": ":white_check_mark:" if attack_natural >= 18 else ":x:",
+            "plus4": ":white_check_mark:" if attack_natural >= 16 else ":x:",
+        }
+
+        # Create calculation breakdown
+        math_breakdown = f"|| ({attack_natural} + {bonus} + {escalation} = {attack_modified}) ||"
+
+        # Create embed
         attack_embed = discord.Embed(
-            title='__**Attack Result**__', description=f'{attack_modified}\n{math}', color=0x0000FF
+            title="__**Attack Result**__",
+            description=f"{attack_modified}\n{math_breakdown}",
+            color=0x0000FF,
         )
-        attack_embed.add_field(name='Natural Roll', value=f'{attack_natural}', inline=False)
-        attack_embed.add_field(name='Natural Crit', value=f'{crit}', inline=True)
-        attack_embed.add_field(name='+2 Crit Range', value=f'{crit_range_plus2}', inline=True)
-        attack_embed.add_field(name='+4 Crit Range', value=f'{crit_range_plus4}', inline=True)
-        attack_embed.add_field(name='Escalation', value='N/A')
-        await ctx.send(f'{ctx.author.mention} rolled an **NPC attack**.', embed=attack_embed)
+        attack_embed.add_field(name="Natural Roll", value=f"{attack_natural}", inline=False)
+        attack_embed.add_field(name="Natural Crit", value=crit_indicators["natural"], inline=True)
+        attack_embed.add_field(name="+2 Crit Range", value=crit_indicators["plus2"], inline=True)
+        attack_embed.add_field(name="+4 Crit Range", value=crit_indicators["plus4"], inline=True)
+        attack_embed.add_field(name="Escalation", value=f"{escalation}")
+
+        await ctx.send(f"{ctx.author.mention} rolled to attack.", embed=attack_embed)
+
+    @commands.command(
+        help="Rolls 1d20 + supplied NPC bonus to attack, excludes escalation die. Default bonus = 0",
+        name="attacknpc",
+    )
+    async def attack_npc(self, ctx, bonus: int = 0, roll_type: str = "d"):
+        # Valid roll types mapping
+        valid_roll_types = {"d": "1d20", "ad": "1ad20", "dd": "1dd20"}
+
+        # Validate roll type
+        if roll_type not in valid_roll_types:
+            await ctx.send(f"Invalid roll type: {roll_type}. Valid types are: {', '.join(valid_roll_types.keys())}")
+            return
+
+        # Roll the dice
+        attack_natural = die_roll.roll(valid_roll_types[roll_type]).total
+        attack_modified = attack_natural + bonus
+
+        # Determine crit status
+        crit_indicators = {
+            "natural": ":white_check_mark:" if attack_natural == 20 else ":x:",
+            "plus2": ":white_check_mark:" if attack_natural >= 18 else ":x:",
+            "plus4": ":white_check_mark:" if attack_natural >= 16 else ":x:",
+        }
+
+        # Create calculation breakdown
+        math_breakdown = f"|| ({attack_natural} + {bonus} = {attack_modified}) ||"
+
+        # Create embed
+        attack_embed = discord.Embed(
+            title="__**Attack Result**__",
+            description=f"{attack_modified}\n{math_breakdown}",
+            color=0x0000FF,
+        )
+        attack_embed.add_field(name="Natural Roll", value=f"{attack_natural}", inline=False)
+        attack_embed.add_field(name="Natural Crit", value=crit_indicators["natural"], inline=True)
+        attack_embed.add_field(name="+2 Crit Range", value=crit_indicators["plus2"], inline=True)
+        attack_embed.add_field(name="+4 Crit Range", value=crit_indicators["plus4"], inline=True)
+        attack_embed.add_field(name="Escalation", value="N/A")
+
+        await ctx.send(f"{ctx.author.mention} rolled an **NPC attack**.", embed=attack_embed)
 
     @attack.error
     @attack_npc.error
