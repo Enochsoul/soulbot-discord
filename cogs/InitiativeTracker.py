@@ -21,23 +21,21 @@ class InitiativeTrack:
 
     def reset(self):
         """Resets all tracking values to defaults."""
-        self.combatant_dict = {}
-        self.tracker = []
-        self.tracker_active = False
-        self.turn = []
-        self.escalation = 0
+        self.__init__()
 
     def build_init_table(self):
         """Takes combatant dictionary, sorts it by key value,
         then builds the initiative activity table.
         """
-        # The combatant dict isn't sorted, create a sorted dict here.
-        init_sorted = {k: v for k, v in sorted(self.combatant_dict.items(), key=lambda i: i[1], reverse=True)}
-        # Create a list of lists from the sorted dict.
-        table = [[k, init_sorted[k]] for k in init_sorted]
-        # Insert the turn markers to the 0th index of each sub-list.
-        for item in table:
-            item.insert(0, self.turn[table.index(item)])
+        # Sort combatants by initiative value in descending order
+        sorted_combatants = sorted(self.combatant_dict.items(), key=lambda x: x[1], reverse=True)
+
+        # Build table with turn markers
+        table = []
+        for i, (name, initiative) in enumerate(sorted_combatants):
+            turn_marker = self.turn[i] if i < len(self.turn) else "    "
+            table.append([turn_marker, name, initiative])
+
         return table
 
     def embed_template(self):
@@ -47,10 +45,10 @@ class InitiativeTrack:
             headers=["Active", "Player", "Initiative"],
             tablefmt="fancy_grid",
         )
-        embed_template = discord.Embed(colour=discord.Colour.red())
-        embed_template.add_field(name="Tracker Active", value=f"{self.tracker_active}")
-        embed_template.add_field(name="Escalation Die", value=f"{self.escalation}")
-        return embed_template, f"```{init_table}```"
+        embed = discord.Embed(colour=discord.Colour.red())
+        embed.add_field(name="Tracker Active", value=str(self.tracker_active))
+        embed.add_field(name="Escalation Die", value=str(self.escalation))
+        return embed, f"```{init_table}```"
 
 
 init_obj = {}
