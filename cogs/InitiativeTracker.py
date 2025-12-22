@@ -4,7 +4,7 @@ import discord
 from discord.ext import commands
 from tabulate import tabulate
 
-from DiceRoller import die_roll
+import init_support
 from soulbot import bot as init_bot
 from soulbot_support import soulbot_db
 
@@ -63,7 +63,7 @@ async def on_guild_join(guild):
     init_obj[guild.id] = InitiativeTrack()
 
 
-class InitiativeTracker(discord.Cog, name='Initiative Tracker'):
+class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
     """Class definition for Initiative Tracker Cog."""
 
     def __init__(self, bot):
@@ -104,12 +104,12 @@ class InitiativeTracker(discord.Cog, name='Initiative Tracker'):
         if ctx.invoked_subcommand is None:
             await ctx.send(f"Additional arguments required, see **{ctx.prefix}help init** for available options.")
 
-    @init.command(help='Clears the Initiative tracker, and starts a new order.')
+    @init.command(help="Clears the Initiative tracker, and starts a new order.")
     async def reset(self, ctx):
         init_obj[ctx.guild.id].reset()
         soulbot_db.init_db_reset(ctx.guild.id)
         soulbot_db.init_db_commit()
-        await ctx.send('Initiative Tracker is reset and active.')
+        await ctx.send("Initiative Tracker is reset and active.")
 
     @init.command(
         name="roll",
@@ -119,49 +119,20 @@ class InitiativeTracker(discord.Cog, name='Initiative Tracker'):
         guild_tracker = init_obj[ctx.guild.id]
         player_name = ctx.author.display_name
 
-        if guild_tracker.tracker_active:
-            await ctx.send("Initiative Tracker is locked in an active combat session.")
-            return
+        message = init_support.handle_init_roll_logic(guild_tracker, player_name, init_bonus)
+        await ctx.send(message)
 
-        if player_name in guild_tracker.combatant_dict:
-            await ctx.send(f"{player_name} is already in the initiative order.")
-            return
-
-        # Roll initiative and add to tracker
-        initiative_roll = die_roll.roll("1d20").total
-        total_initiative = initiative_roll + init_bonus
-
-        guild_tracker.combatant_dict[player_name] = total_initiative
-        guild_tracker.turn = ["    " for _ in range(len(guild_tracker.combatant_dict))]
-        guild_tracker.tracker = guild_tracker.build_init_table()
-
-        await ctx.send(f"{player_name}'s Initiative is ({initiative_roll}+{init_bonus}) {total_initiative}.")
-
-    @init.command(help='Starts the tracker and prevents any additions.')
+    @init.command(help="Starts the tracker and prevents any additions.")
     async def start(self, ctx):
         guild_tracker = init_obj[ctx.guild.id]
 
-        if len(guild_tracker.combatant_dict) == 0:
-            await ctx.send(f"Please use **{ctx.prefix}init roll** to add to the order first.")
-            return
+        message, embed = init_support.handle_start_logic(guild_tracker, ctx, self._update_database)
+        if embed is None:
+            await ctx.send(message)
+        else:
+            await ctx.send(message, embed=embed)
 
-        if guild_tracker.tracker_active:
-            await ctx.send("Tracker is already started.")
-            return
-
-        # Start the tracker
-        guild_tracker.tracker_active = True
-        guild_tracker.turn[0] = "--->"
-        guild_tracker.tracker = guild_tracker.build_init_table()
-
-        # Update database
-        self._update_database(ctx, guild_tracker)
-
-        # Send response
-        embed, table = guild_tracker.embed_template()
-        await ctx.send(table, embed=embed)
-
-    @init.command(help='Shows current turn order, rolls and tracker status.')
+    @init.command(help="Shows current turn order, rolls and tracker status.")
     async def show(self, ctx):
         guild_tracker = init_obj[ctx.guild.id]
         embed, table = guild_tracker.embed_template()
@@ -171,79 +142,24 @@ class InitiativeTracker(discord.Cog, name='Initiative Tracker'):
     async def next_turn(self, ctx):
         guild_tracker = init_obj[ctx.guild.id]
 
-        if not guild_tracker.tracker_active:
-            await ctx.send(f"Tracker not active, use **{ctx.prefix}init start** to begin.")
-            return
-
-        try:
-            current_turn_index = guild_tracker.turn.index("--->")
-        except ValueError:
-            await ctx.send("Error: No active turn marker found.")
-            return
-
-        is_last_combatant = current_turn_index == len(guild_tracker.combatant_dict) - 1
-
-        # Advance turn
-        guild_tracker.turn.insert(0, guild_tracker.turn.pop(-1))
-        guild_tracker.tracker = guild_tracker.build_init_table()
-
-        # Handle escalation for new rounds
-        if is_last_combatant:
-            guild_tracker.escalation = min(guild_tracker.escalation + 1, 6)
-            message = "Beginning next combat round."
+        message, embed = init_support.handle_next_turn_logic(guild_tracker, ctx)
+        if embed is None:
+            await ctx.send(message)
         else:
-            message = "Beginning next turn."
+            await ctx.send(message, embed=embed)
 
-        embed, table = guild_tracker.embed_template()
-        await ctx.send(f"{message}\n{table}", embed=embed)
-
-    @init.command(help='Allows a user to delay their turn in the order.')
+    @init.command(help="Allows a user to delay their turn in the order.")
     async def delay(self, ctx, new_init: int):
         guild_tracker = init_obj[ctx.guild.id]
         player_name = ctx.author.display_name
 
-        # Check if tracker is active
-        if not guild_tracker.tracker_active:
-            await ctx.send(f"Tracker not active, use **{ctx.prefix}init start** to begin.")
-            return
-
-        # Check if player is in the initiative order
-        if player_name not in guild_tracker.combatant_dict:
-            await ctx.send(f"{player_name} is not in the initiative order.")
-            return
-
-        # Get current player's initiative and validate new initiative
-        current_init = guild_tracker.combatant_dict[player_name]
-        if new_init > current_init:
-            await ctx.send(f"New initiative ({new_init}) must be lower than original ({current_init}).")
-            return
-
-        # Find the current active player
-        active_player = None
-        for sublist in guild_tracker.tracker:
-            if "--->" in sublist:
-                active_player = sublist[1]
-                break
-
-        # Check if it's the player's turn
-        if player_name != active_player:
-            await ctx.send("Delay should be done on your turn.")
-            return
-
-        # Update initiative and rebuild tracker
-        guild_tracker.combatant_dict[player_name] = new_init
-        guild_tracker.tracker = guild_tracker.build_init_table()
-
-        # Update database
-        self._update_database(ctx, guild_tracker)
-
-        # Send response
-        embed, table = guild_tracker.embed_template()
-        await ctx.send(
-            f"Initiative for {player_name} has been delayed to {new_init}. "
-            f"Initiative order has been recalculated.\n{table}",
-            embed=embed,
+        message, embed = init_support.handle_delay_logic(
+            guild_tracker, player_name, new_init, ctx, self._update_database
         )
+        if embed is None:
+            await ctx.send(message)
+        else:
+            await ctx.send(message, embed=embed)
 
     @init.group(case_insensitive=True, help="Commands for the DM.", name="dm")
     @commands.has_role("DM" or "GM")
@@ -256,39 +172,17 @@ class InitiativeTracker(discord.Cog, name='Initiative Tracker'):
     async def npc(self, ctx, npc_name: str, init_bonus: int = 0):
         guild_tracker = init_obj[ctx.guild.id]
 
-        # Handle Discord user mentions
-        npc_name = self._parse_mention(ctx, npc_name)
-
-        # Check if NPC is already in the order
-        if npc_name in guild_tracker.combatant_dict:
-            await ctx.send(f"{npc_name} is already used in the initiative order.")
-            return
-
-        # Roll initiative
-        initiative_roll = die_roll.roll("1d20").total
-        total_initiative = initiative_roll + init_bonus
-
-        # Find and preserve the current active player
-        active_player = self._find_active_player(guild_tracker)
-
-        # Add NPC to combatant dictionary
-        guild_tracker.combatant_dict[npc_name] = total_initiative
-        guild_tracker.turn = ["    " for _ in range(len(guild_tracker.combatant_dict))]
-        guild_tracker.tracker = guild_tracker.build_init_table()
-
-        if guild_tracker.tracker_active:
-            # Update database
-            self._update_database(ctx, guild_tracker)
-
-            # Restore active player marker
-            self._set_active_player(guild_tracker, active_player)
-
-            await ctx.send(
-                f"Adding {npc_name} to active combat round.\n"
-                f"Initiative is ({initiative_roll}+{init_bonus}) {total_initiative}."
-            )
-        else:
-            await ctx.send(f"{npc_name}'s Initiative is ({initiative_roll}+{init_bonus}) {total_initiative}.")
+        message, error = init_support.handle_npc_logic(
+            guild_tracker,
+            npc_name,
+            init_bonus,
+            ctx,
+            self._parse_mention,
+            self._find_active_player,
+            self._update_database,
+            self._set_active_player,
+        )
+        await ctx.send(message)
 
     @dm_group.command(help="Allows DM to manipulate the Escalation Die.  Value can be plus or minus.  Default = 1")
     async def escalate(self, ctx, value_change: int = 1):
@@ -310,41 +204,16 @@ class InitiativeTracker(discord.Cog, name='Initiative Tracker'):
     async def remove(self, ctx, name: str):
         guild_tracker = init_obj[ctx.guild.id]
 
-        # Parse mention to get display name
-        name = self._parse_mention(ctx, name)
-
-        # Check if the name is in the initiative order
-        if name not in guild_tracker.combatant_dict:
-            await ctx.send(f"{name} is not in the initiative order.")
-            return
-
-        # Handle active tracker scenario
-        if guild_tracker.tracker_active:
-            # Find the currently active player
-            active_user = self._find_active_player(guild_tracker)
-
-            if active_user == name:
-                await ctx.send(f"{name} is the active combatant, please advance the turn before removing them.")
-                return
-
-            # Remove the combatant
-            del guild_tracker.combatant_dict[name]
-            guild_tracker.turn = ["    " for _ in range(len(guild_tracker.combatant_dict))]
-            guild_tracker.tracker = guild_tracker.build_init_table()
-
-            # Update database
-            self._update_database(ctx, guild_tracker)
-
-            # Restore the active player marker
-            self._set_active_player(guild_tracker, active_user)
-
-            await ctx.send(f"{name} has been removed from the initiative table.")
-        else:
-            # Handle inactive tracker scenario
-            del guild_tracker.combatant_dict[name]
-            guild_tracker.turn = ["    " for _ in range(len(guild_tracker.combatant_dict))]
-            guild_tracker.tracker = guild_tracker.build_init_table()
-            await ctx.send(f"{name} has been removed from the initiative table.")
+        message, error = init_support.handle_remove_logic(
+            guild_tracker,
+            name,
+            ctx,
+            self._parse_mention,
+            self._find_active_player,
+            self._update_database,
+            self._set_active_player,
+        )
+        await ctx.send(message)
 
     @dm_group.command(
         help="Allows DM to manually update an NPC or player's init score.  "
@@ -354,58 +223,29 @@ class InitiativeTracker(discord.Cog, name='Initiative Tracker'):
     async def update(self, ctx, name: str, new_init: int):
         guild_tracker = init_obj[ctx.guild.id]
 
-        # Parse mention to get display name
-        name = self._parse_mention(ctx, name)
-
-        # Check if the name is in the initiative order
-        if name not in guild_tracker.combatant_dict:
-            await ctx.send(f"{name} is not in the initiative order.")
-            return
-
-        # Find and preserve the current active player if tracker is active
-        active_player = None
-        if guild_tracker.tracker_active:
-            active_player = self._find_active_player(guild_tracker)
-
-        # Update the combatant's initiative
-        guild_tracker.combatant_dict[name] = new_init
-        guild_tracker.tracker = guild_tracker.build_init_table()
-
-        # Update database if tracker is active
-        if guild_tracker.tracker_active:
-            self._update_database(ctx, guild_tracker)
-
-            # Restore active player marker if there was one
-            if active_player:
-                self._set_active_player(guild_tracker, active_player)
-
-        await ctx.send(f"{name}'s initiative has been manually set to {new_init}.")
+        message, error = init_support.handle_update_logic(
+            guild_tracker,
+            name,
+            new_init,
+            ctx,
+            self._parse_mention,
+            self._find_active_player,
+            self._update_database,
+            self._set_active_player,
+        )
+        await ctx.send(message)
 
     @dm_group.command(help="Allows DM to manually change who is the active combatant.")
     async def active(self, ctx, name: str):
         guild_tracker = init_obj[ctx.guild.id]
 
-        # Parse mention to get display name
-        name = self._parse_mention(ctx, name)
-
-        # Check if tracker is active
-        if not guild_tracker.tracker_active:
-            await ctx.send("Initiative tracker is not active.")
-            return
-
-        # Check if the name is in the initiative order
-        if name not in guild_tracker.combatant_dict:
-            await ctx.send(f"{name} is not in the initiative order.")
-            return
-
-        # Reset all turn markers and set the active player
-        guild_tracker.turn = ["    " for _ in range(len(guild_tracker.combatant_dict))]
-        self._set_active_player(guild_tracker, name)
-        guild_tracker.tracker = guild_tracker.build_init_table()
-
-        # Send response
-        embed, table = guild_tracker.embed_template()
-        await ctx.send(f"{name} is now the active combatant.\n{table}", embed=embed)
+        message, embed = init_support.handle_active_logic(
+            guild_tracker, name, ctx, self._parse_mention, self._set_active_player
+        )
+        if embed is None:
+            await ctx.send(message)
+        else:
+            await ctx.send(message, embed=embed)
 
     @dm_group.command(
         help="DON'T DO THIS UNLESS YOU MEAN IT. "
@@ -415,22 +255,8 @@ class InitiativeTracker(discord.Cog, name='Initiative Tracker'):
     async def rebuild(self, ctx):
         guild_tracker = init_obj[ctx.guild.id]
 
-        # Reset the tracker
-        guild_tracker.reset()
-
-        # Rebuild from database
-        all_rows = soulbot_db.init_db_rebuild(ctx.guild.id)
-        if all_rows:
-            guild_tracker.combatant_dict = {row[0]: row[1] for row in all_rows}
-            guild_tracker.turn = ["    " for _ in range(len(guild_tracker.combatant_dict))]
-            guild_tracker.tracker = guild_tracker.build_init_table()
-
-        # Generate response
-        embed, table = guild_tracker.embed_template()
-        await ctx.send(
-            f"Initiative tracker has been reset and rebuilt from the backup database.\n{table}",
-            embed=embed,
-        )
+        message, embed = init_support.handle_rebuild_logic(guild_tracker, ctx)
+        await ctx.send(message, embed=embed)
 
     @dm_group.error
     @npc.error
@@ -459,83 +285,22 @@ class InitiativeTracker(discord.Cog, name='Initiative Tracker'):
     )
     async def attack(self, ctx, bonus: int = 0, roll_type: str = "d"):
         """Roll an attack with the specified bonus and roll type."""
-        # Valid roll types mapping
-        valid_roll_types = {"d": "1d20", "ad": "1ad20", "dd": "1dd20"}
-
-        # Validate roll type
-        if roll_type not in valid_roll_types:
-            await ctx.send(f"Invalid roll type: {roll_type}. Valid types are: {', '.join(valid_roll_types.keys())}")
-            return
-
-        # Roll the dice
-        attack_natural = die_roll.roll(valid_roll_types[roll_type]).total
-        escalation = init_obj[ctx.guild.id].escalation
-        attack_modified = attack_natural + bonus + escalation
-
-        # Determine crit status
-        crit_indicators = {
-            "natural": ":white_check_mark:" if attack_natural == 20 else ":x:",
-            "plus2": ":white_check_mark:" if attack_natural >= 18 else ":x:",
-            "plus4": ":white_check_mark:" if attack_natural >= 16 else ":x:",
-        }
-
-        # Create calculation breakdown
-        math_breakdown = f"|| ({attack_natural} + {bonus} + {escalation} = {attack_modified}) ||"
-
-        # Create embed
-        attack_embed = discord.Embed(
-            title="__**Attack Result**__",
-            description=f"{attack_modified}\n{math_breakdown}",
-            color=0x0000FF,
-        )
-        attack_embed.add_field(name="Natural Roll", value=f"{attack_natural}", inline=False)
-        attack_embed.add_field(name="Natural Crit", value=crit_indicators["natural"], inline=True)
-        attack_embed.add_field(name="+2 Crit Range", value=crit_indicators["plus2"], inline=True)
-        attack_embed.add_field(name="+4 Crit Range", value=crit_indicators["plus4"], inline=True)
-        attack_embed.add_field(name="Escalation", value=f"{escalation}")
-
-        await ctx.send(f"{ctx.author.mention} rolled to attack.", embed=attack_embed)
+        message, embed = init_support.handle_attack_logic(ctx, bonus, roll_type, init_obj)
+        if embed:
+            await ctx.send(message, embed=embed)
+        else:
+            await ctx.send(message)
 
     @commands.command(
         help="Rolls 1d20 + supplied NPC bonus to attack, excludes escalation die. Default bonus = 0",
         name="attacknpc",
     )
     async def attack_npc(self, ctx, bonus: int = 0, roll_type: str = "d"):
-        # Valid roll types mapping
-        valid_roll_types = {"d": "1d20", "ad": "1ad20", "dd": "1dd20"}
-
-        # Validate roll type
-        if roll_type not in valid_roll_types:
-            await ctx.send(f"Invalid roll type: {roll_type}. Valid types are: {', '.join(valid_roll_types.keys())}")
-            return
-
-        # Roll the dice
-        attack_natural = die_roll.roll(valid_roll_types[roll_type]).total
-        attack_modified = attack_natural + bonus
-
-        # Determine crit status
-        crit_indicators = {
-            "natural": ":white_check_mark:" if attack_natural == 20 else ":x:",
-            "plus2": ":white_check_mark:" if attack_natural >= 18 else ":x:",
-            "plus4": ":white_check_mark:" if attack_natural >= 16 else ":x:",
-        }
-
-        # Create calculation breakdown
-        math_breakdown = f"|| ({attack_natural} + {bonus} = {attack_modified}) ||"
-
-        # Create embed
-        attack_embed = discord.Embed(
-            title="__**Attack Result**__",
-            description=f"{attack_modified}\n{math_breakdown}",
-            color=0x0000FF,
-        )
-        attack_embed.add_field(name="Natural Roll", value=f"{attack_natural}", inline=False)
-        attack_embed.add_field(name="Natural Crit", value=crit_indicators["natural"], inline=True)
-        attack_embed.add_field(name="+2 Crit Range", value=crit_indicators["plus2"], inline=True)
-        attack_embed.add_field(name="+4 Crit Range", value=crit_indicators["plus4"], inline=True)
-        attack_embed.add_field(name="Escalation", value="N/A")
-
-        await ctx.send(f"{ctx.author.mention} rolled an **NPC attack**.", embed=attack_embed)
+        message, embed = init_support.handle_attack_npc_logic(ctx, bonus, roll_type)
+        if embed:
+            await ctx.send(message, embed=embed)
+        else:
+            await ctx.send(message)
 
     @attack.error
     @attack_npc.error
@@ -543,7 +308,7 @@ class InitiativeTracker(discord.Cog, name='Initiative Tracker'):
     async def cog_command_error(self, ctx, error):
         if isinstance(error, commands.CommandInvokeError):
             print(error)
-            await ctx.send('An error occurred with the last command.')
+            await ctx.send("An error occurred with the last command.")
         elif isinstance(error, commands.BadArgument):
             await ctx.send(
                 f"Invalid attack bonus, please check **{ctx.prefix}help {ctx.invoked_with}** for command syntax."
