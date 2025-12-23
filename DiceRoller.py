@@ -4,10 +4,9 @@ import os
 import random
 
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from dice_support import Dice, InvalidDiceFormat, InvalidRollType
-from soulbot import bot_config
 
 die_roll = Dice()
 
@@ -19,7 +18,7 @@ def deck_embed_template(image_file: str):
     return embed_template
 
 
-class DiceRoller(discord.Cog, name='Dice Roller'):
+class DiceRoller(discord.Cog, name="Dice Roller"):
     """Class definition for DiceRoller Cog."""
 
     def __init__(self, bot):
@@ -51,21 +50,17 @@ class DiceRoller(discord.Cog, name='Dice Roller'):
         decks = "\n".join(self.deck_list)
         await ctx.send(f"\nAvailable Decks:\n{decks}")
 
-    @deck.command(help='Select a deck to draw cards from.')
+    @deck.command(help="Select a deck to draw cards from.")
     async def select(self, ctx, deck_name=None):
         if deck_name is None:
-            await ctx.send(
-                f"ERROR: That deck doesn't exist.  Please select a deck from **{ctx.prefix}deck list**."
-            )
+            await ctx.send(f"ERROR: That deck doesn't exist.  Please select a deck from **{ctx.prefix}deck list**.")
         else:
             try:
                 self.card_list[ctx.guild.id] = os.listdir(f"./data/decks/{deck_name}")
                 self.active_deck[ctx.guild.id] = deck_name
                 await ctx.send(f"Active deck set to {self.active_deck[ctx.guild.id]}")
             except FileNotFoundError:
-                await ctx.send(
-                    f"ERROR: That deck doesn't exist.  Please select a deck from **{ctx.prefix}deck list**."
-                )
+                await ctx.send(f"ERROR: That deck doesn't exist.  Please select a deck from **{ctx.prefix}deck list**.")
 
     @deck.command(help="Draw a card from the selected deck")
     async def draw(self, ctx):

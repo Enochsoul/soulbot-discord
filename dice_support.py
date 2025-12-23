@@ -63,9 +63,7 @@ class Dice:
         except (InvalidDiceFormat, InvalidRollType):
             raise
         except Exception as e:
-            raise InvalidDiceFormat(
-                f"Error processing roll string '{roll_string}': {str(e)}"
-            )
+            raise InvalidDiceFormat(f"Error processing roll string '{roll_string}': {str(e)}")
 
     def _parse_and_roll(self, roll_string: str) -> RollResult:
         """Parse the roll string and execute the appropriate roll."""
@@ -78,9 +76,7 @@ class Dice:
         elif multi_match:
             return self._handle_multi_roll(multi_match)
         else:
-            raise InvalidDiceFormat(
-                "Error: Dice rolls should be in the format 'XdY' or 'XdY+Z' or 'XdY-Z'"
-            )
+            raise InvalidDiceFormat("Error: Dice rolls should be in the format 'XdY' or 'XdY+Z' or 'XdY-Z'")
 
     def _handle_normal_roll(self, match) -> RollResult:
         """Handle a normal dice roll (e.g., 3d6, 1ad20)."""
@@ -100,16 +96,12 @@ class Dice:
             roll_results.append(self._parse_and_roll(roll))
 
         # Combine results
-        combined_rolls = list(
-            chain.from_iterable(result.rolls for result in roll_results)
-        )
+        combined_rolls = list(chain.from_iterable(result.rolls for result in roll_results))
         combined_totals = sum(result.total for result in roll_results)
         combined_types = "/".join(result.roll_type for result in roll_results)
         combined_modifiers = sum(result.modifier for result in roll_results)
 
-        return RollResult(
-            combined_rolls, combined_totals, combined_types, combined_modifiers
-        )
+        return RollResult(combined_rolls, combined_totals, combined_types, combined_modifiers)
 
     def _generate_dice_rolls(self, count: int, size: int) -> List[int]:
         """Generate dice rolls using numpy/scipy for multi-die or random for single die."""
@@ -130,11 +122,7 @@ class Dice:
         std = np.std(range(1, die_size + 1))
         a, b = (1 - mean) / std, ((die_size + 1) - mean) / std
 
-        return (
-            truncnorm.rvs(a, b, loc=mean, scale=std, size=die_count)
-            .astype(int)
-            .tolist()
-        )
+        return truncnorm.rvs(a, b, loc=mean, scale=std, size=die_count).astype(int).tolist()
 
     def _apply_roll_type(
         self,
@@ -146,36 +134,21 @@ class Dice:
         """Apply special roll type effects (advantage, disadvantage, exploding, etc.)."""
         match roll_type:
             case "d":  # Normal roll
-                bold_result = [
-                    f"**{roll}**" if roll == die_size else str(roll)
-                    for roll in roll_result
-                ]
+                bold_result = [f"**{roll}**" if roll == die_size else str(roll) for roll in roll_result]
                 return RollResult(bold_result, sum(roll_result), "Default", modifier)
 
             case "dd":  # Disadvantage roll
                 if len(roll_result) != 1:
-                    raise InvalidDiceFormat(
-                        "Error: Disadvantage roll must only be a single die."
-                    )
+                    raise InvalidDiceFormat("Error: Disadvantage roll must only be a single die.")
                 roll_result.extend(self._roll_single_die(die_size))
-                bold_result = [
-                    f"**{roll}**" if roll == die_size else str(roll)
-                    for roll in roll_result
-                ]
-                return RollResult(
-                    bold_result, min(roll_result), "Disadvantage", modifier
-                )
+                bold_result = [f"**{roll}**" if roll == die_size else str(roll) for roll in roll_result]
+                return RollResult(bold_result, min(roll_result), "Disadvantage", modifier)
 
             case "ad":  # Advantage roll
                 if len(roll_result) != 1:
-                    raise InvalidDiceFormat(
-                        "Error: Advantage roll must only be a single die."
-                    )
+                    raise InvalidDiceFormat("Error: Advantage roll must only be a single die.")
                 roll_result.extend(self._roll_single_die(die_size))
-                bold_result = [
-                    f"**{roll}**" if roll == die_size else str(roll)
-                    for roll in roll_result
-                ]
+                bold_result = [f"**{roll}**" if roll == die_size else str(roll) for roll in roll_result]
                 return RollResult(bold_result, max(roll_result), "Advantage", modifier)
 
             case "ed":  # Exploding roll
@@ -186,40 +159,24 @@ class Dice:
                     roll_result.extend(exploded)
                     explode_count += exploded.count(die_size)
 
-                bold_result = [
-                    f"**{roll}**" if roll == die_size else str(roll)
-                    for roll in roll_result
-                ]
+                bold_result = [f"**{roll}**" if roll == die_size else str(roll) for roll in roll_result]
                 return RollResult(bold_result, sum(roll_result), "Exploding", modifier)
 
             case "ex":  # 10X System (placeholder for future implementation)
-                bold_result = [
-                    f"**{roll}**" if roll == die_size else str(roll)
-                    for roll in roll_result
-                ]
+                bold_result = [f"**{roll}**" if roll == die_size else str(roll) for roll in roll_result]
                 return RollResult(bold_result, sum(roll_result), "10x System", modifier)
 
             case "dl":  # Drop lowest roll.
                 lowest = min(roll_result)
                 roll_result.remove(lowest)
-                bold_result = [
-                    f"**{roll}**" if roll == die_size else str(roll)
-                    for roll in roll_result
-                ]
-                return RollResult(
-                    bold_result, sum(roll_result), "Drop Lowest", modifier
-                )
+                bold_result = [f"**{roll}**" if roll == die_size else str(roll) for roll in roll_result]
+                return RollResult(bold_result, sum(roll_result), "Drop Lowest", modifier)
 
             case "dh":  # Drop highest roll.
                 lowest = max(roll_result)
                 roll_result.remove(lowest)
-                bold_result = [
-                    f"**{roll}**" if roll == die_size else str(roll)
-                    for roll in roll_result
-                ]
-                return RollResult(
-                    bold_result, sum(roll_result), "Drop Highest", modifier
-                )
+                bold_result = [f"**{roll}**" if roll == die_size else str(roll) for roll in roll_result]
+                return RollResult(bold_result, sum(roll_result), "Drop Highest", modifier)
 
             case _:  # Invalid type
                 raise InvalidRollType(f"Error: Invalid roll type: {roll_type}")
@@ -227,17 +184,15 @@ class Dice:
     @staticmethod
     def _output_formatter(roll_result: RollResult) -> RollResult:
         if roll_result.modifier:
-            string_modifier = (
-                f"+{roll_result.modifier}"
-                if roll_result.modifier > 0
-                else f"{roll_result.modifier}"
-            )
+            string_modifier = f"+{roll_result.modifier}" if roll_result.modifier > 0 else f"{roll_result.modifier}"
             if len(roll_result.rolls) == 1:
                 roll_result.string = f"rolled w/ {roll_result.roll_type}: **{roll_result.total + roll_result.modifier}**. ({roll_result.total}{string_modifier})"
                 return roll_result
             elif len(roll_result.rolls) > 1:
                 string_out = "+".join(roll_result.rolls) + string_modifier
-                roll_result.string = f"rolled w/ {roll_result.roll_type}: **{roll_result.total + roll_result.modifier}**. ({string_out})"
+                roll_result.string = (
+                    f"rolled w/ {roll_result.roll_type}: **{roll_result.total + roll_result.modifier}**. ({string_out})"
+                )
                 return roll_result
             else:
                 roll_result.string = "rolled the impossible, please try again."

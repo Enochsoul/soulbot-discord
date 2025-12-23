@@ -5,10 +5,10 @@ import sqlite3
 
 import arrow
 
-MT = arrow.now('US/Mountain').tzinfo
-PT = arrow.now('US/Pacific').tzinfo
-CT = arrow.now('US/Central').tzinfo
-ET = arrow.now('US/Eastern').tzinfo
+MT = arrow.now("US/Mountain").tzinfo
+PT = arrow.now("US/Pacific").tzinfo
+CT = arrow.now("US/Central").tzinfo
+ET = arrow.now("US/Eastern").tzinfo
 UTC = arrow.utcnow().tzinfo
 
 
@@ -17,7 +17,7 @@ class DatabaseIO:
 
     def __init__(self):
         self.bot_db = sqlite3.connect(
-            'data/discordbot.sql', detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
+            "data/discordbot.sql", detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
         )
         self.c = self.bot_db.cursor()
         self.c.execute("""CREATE TABLE IF NOT EXISTS next_game
@@ -36,9 +36,7 @@ class DatabaseIO:
 
         :param init_insert: List of tuples containing player/NPC initiative values.
         """
-        self.c.executemany(
-            """INSERT INTO initiative(guild_id, name, init) VALUES(?,?,?)""", init_insert
-        )
+        self.c.executemany("""INSERT INTO initiative(guild_id, name, init) VALUES(?,?,?)""", init_insert)
 
     def init_db_reset(self, guild_id: int):
         """Delete initiative table data."""
@@ -61,9 +59,7 @@ class DatabaseIO:
 
         :param quote_insert: Text to add to database.
         """
-        self.c.execute(
-            """INSERT INTO quotes(guild_id, quote) VALUES(?,?)""", (guild_id, quote_insert)
-        )
+        self.c.execute("""INSERT INTO quotes(guild_id, quote) VALUES(?,?)""", (guild_id, quote_insert))
         self.bot_db.commit()
 
     def quote_db_search(self, quote_search: str, guild_id: int):
@@ -74,7 +70,7 @@ class DatabaseIO:
         """
         self.c.execute(
             """SELECT quote FROM quotes where quote LIKE ? AND guild_id=?""",
-            ('%' + str(quote_search) + '%', guild_id),
+            ("%" + str(quote_search) + "%", guild_id),
         )
         quote_text = self.c.fetchall()
         if len(quote_text) > 0:
@@ -98,13 +94,11 @@ class DatabaseIO:
             quote_text = self.c.fetchone()[1]
             return f'QUOTE: "{quote_text}"'
         else:
-            return 'No quotes in the database.'
+            return "No quotes in the database."
 
     def next_game_db_get(self, guild_id):
         """Pulls Next Game date from the database."""
-        self.c.execute(
-            """SELECT next_date, announce_on FROM next_game where guild_id=?""", (guild_id,)
-        )
+        self.c.execute("""SELECT next_date, announce_on FROM next_game where guild_id=?""", (guild_id,))
         return self.c.fetchone()
 
     def next_game_db_add(self, output_date, guild_id: int):

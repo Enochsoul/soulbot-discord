@@ -106,4 +106,4 @@ The options are as follows:
 
 Want to load your own Cogs?  Place the .py file in the cogs folder, configure it to load in the config file and restart the bot.  
 
-I don't guarantee that any other cogs will work, but they should if they are written for the python discord module.  This is just a side effect of how I decided to implement Cog loading.  Use at your own risk.  
+I don't guarantee that any other cogs will work, but they should if they are written for the python discord module.  This is just a side effect of how I decided to implement Cog loading.  Use at your own risk.
