@@ -1,6 +1,6 @@
 """Support functions for Initiative Tracker async function capabilities."""
 
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import discord
 from discord.ext import commands
@@ -15,7 +15,7 @@ class InitiativeTrack:
 
     def __init__(self) -> None:
         self.combatant_dict: dict[str, int] = {}
-        self.tracker: list[tuple[str, str, int]] = []
+        self.tracker: list[list[Union[str, int]]] = []
         self.tracker_active: bool = False
         self.turn: list[str] = []
         self.escalation: int = 0
