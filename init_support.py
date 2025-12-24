@@ -1,5 +1,7 @@
 """Support functions for Initiative Tracker async function capabilities."""
 
+from typing import Any, Callable, Dict, Optional, Tuple
+
 import discord
 from discord.ext import commands
 from tabulate import tabulate
@@ -63,12 +65,14 @@ def handle_init_roll_logic(guild_tracker: InitiativeTrack, player_name: str, ini
 
     guild_tracker.combatant_dict[player_name] = total_initiative
     guild_tracker.turn = ["    " for _ in range(len(guild_tracker.combatant_dict))]
-    guild_tracker.tracker = guild_tracker.build_init_table()
+    guild_tracker.build_init_table()
 
     return f"{player_name}'s Initiative is ({initiative_roll}+{init_bonus}) {total_initiative}."
 
 
-def handle_start_logic(guild_tracker, ctx, update_database_func):
+def handle_start_logic(
+    guild_tracker: InitiativeTrack, ctx: commands.Context, update_database_func: Callable[[commands.Context, Any], None]
+) -> Tuple[str, Optional[discord.Embed]]:
     """Handle the core logic for starting the tracker."""
     if len(guild_tracker.combatant_dict) == 0:
         return f"Please use **{ctx.prefix}init roll** to add to the order first.", None
@@ -79,7 +83,7 @@ def handle_start_logic(guild_tracker, ctx, update_database_func):
     # Start the tracker
     guild_tracker.tracker_active = True
     guild_tracker.turn[0] = "--->"
-    guild_tracker.tracker = guild_tracker.build_init_table()
+    guild_tracker.build_init_table()
 
     # Update database
     update_database_func(ctx, guild_tracker)
@@ -89,7 +93,9 @@ def handle_start_logic(guild_tracker, ctx, update_database_func):
     return table, embed
 
 
-def handle_next_turn_logic(guild_tracker, ctx):
+def handle_next_turn_logic(
+    guild_tracker: InitiativeTrack, ctx: commands.Context
+) -> Tuple[str, Optional[discord.Embed]]:
     """Handle the core logic for advancing to the next turn."""
     if not guild_tracker.tracker_active:
         return f"Tracker not active, use **{ctx.prefix}init start** to begin.", None
@@ -103,7 +109,7 @@ def handle_next_turn_logic(guild_tracker, ctx):
 
     # Advance turn
     guild_tracker.turn.insert(0, guild_tracker.turn.pop(-1))
-    guild_tracker.tracker = guild_tracker.build_init_table()
+    guild_tracker.build_init_table()
 
     # Handle escalation for new rounds
     if is_last_combatant:
@@ -116,7 +122,13 @@ def handle_next_turn_logic(guild_tracker, ctx):
     return f"{message}\n{table}", embed
 
 
-def handle_delay_logic(guild_tracker, player_name, new_init, ctx, update_database_func):
+def handle_delay_logic(
+    guild_tracker: InitiativeTrack,
+    player_name: str,
+    new_init: int,
+    ctx: commands.Context,
+    update_database_func: Callable[[commands.Context, Any], None],
+) -> Tuple[str, Optional[discord.Embed]]:
     """Handle the core logic for delaying a player's turn."""
     # Check if tracker is active
     if not guild_tracker.tracker_active:
@@ -144,7 +156,7 @@ def handle_delay_logic(guild_tracker, player_name, new_init, ctx, update_databas
 
     # Update initiative and rebuild tracker
     guild_tracker.combatant_dict[player_name] = new_init
-    guild_tracker.tracker = guild_tracker.build_init_table()
+    guild_tracker.build_init_table()
 
     # Update database
     update_database_func(ctx, guild_tracker)
@@ -158,15 +170,15 @@ def handle_delay_logic(guild_tracker, player_name, new_init, ctx, update_databas
 
 
 def handle_npc_logic(
-    guild_tracker,
-    npc_name,
-    init_bonus,
-    ctx,
-    parse_mention_func,
-    find_active_player_func,
-    update_database_func,
-    set_active_player_func,
-):
+    guild_tracker: InitiativeTrack,
+    npc_name: str,
+    init_bonus: int,
+    ctx: commands.Context,
+    parse_mention_func: Callable[[commands.Context, str], str],
+    find_active_player_func: Callable[[Any], Optional[str]],
+    update_database_func: Callable[[commands.Context, Any], None],
+    set_active_player_func: Callable[[Any, str], None],
+) -> Tuple[str, None]:
     """Handle the core logic for adding NPCs to initiative."""
     # Handle Discord user mentions
     npc_name = parse_mention_func(ctx, npc_name)
@@ -185,14 +197,15 @@ def handle_npc_logic(
     # Add NPC to combatant dictionary
     guild_tracker.combatant_dict[npc_name] = total_initiative
     guild_tracker.turn = ["    " for _ in range(len(guild_tracker.combatant_dict))]
-    guild_tracker.tracker = guild_tracker.build_init_table()
+    guild_tracker.build_init_table()
 
     if guild_tracker.tracker_active:
         # Update database
         update_database_func(ctx, guild_tracker)
 
         # Restore active player marker
-        set_active_player_func(guild_tracker, active_player)
+        if active_player is not None:
+            set_active_player_func(guild_tracker, active_player)
 
         message = (
             f"Adding {npc_name} to active combat round.\n"
@@ -205,8 +218,14 @@ def handle_npc_logic(
 
 
 def handle_remove_logic(
-    guild_tracker, name, ctx, parse_mention_func, find_active_player_func, update_database_func, set_active_player_func
-):
+    guild_tracker: InitiativeTrack,
+    name: str,
+    ctx: commands.Context,
+    parse_mention_func: Callable[[commands.Context, str], str],
+    find_active_player_func: Callable[[Any], Optional[str]],
+    update_database_func: Callable[[commands.Context, Any], None],
+    set_active_player_func: Callable[[Any, str], None],
+) -> Tuple[str, None]:
     """Handle the core logic for removing combatants from initiative."""
     # Parse mention to get display name
     name = parse_mention_func(ctx, name)
@@ -226,33 +245,34 @@ def handle_remove_logic(
         # Remove the combatant
         del guild_tracker.combatant_dict[name]
         guild_tracker.turn = ["    " for _ in range(len(guild_tracker.combatant_dict))]
-        guild_tracker.tracker = guild_tracker.build_init_table()
+        guild_tracker.build_init_table()
 
         # Update database
         update_database_func(ctx, guild_tracker)
 
         # Restore the active player marker
-        set_active_player_func(guild_tracker, active_user)
+        if active_user is not None:
+            set_active_player_func(guild_tracker, active_user)
 
         return f"{name} has been removed from the initiative table.", None
     else:
         # Handle inactive tracker scenario
         del guild_tracker.combatant_dict[name]
         guild_tracker.turn = ["    " for _ in range(len(guild_tracker.combatant_dict))]
-        guild_tracker.tracker = guild_tracker.build_init_table()
+        guild_tracker.build_init_table()
         return f"{name} has been removed from the initiative table.", None
 
 
 def handle_update_logic(
-    guild_tracker,
-    name,
-    new_init,
-    ctx,
-    parse_mention_func,
-    find_active_player_func,
-    update_database_func,
-    set_active_player_func,
-):
+    guild_tracker: InitiativeTrack,
+    name: str,
+    new_init: int,
+    ctx: commands.Context,
+    parse_mention_func: Callable[[commands.Context, str], str],
+    find_active_player_func: Callable[[Any], Optional[str]],
+    update_database_func: Callable[[commands.Context, Any], None],
+    set_active_player_func: Callable[[Any, str], None],
+) -> Tuple[str, None]:
     """Handle the core logic for updating combatant initiative."""
     # Parse mention to get display name
     name = parse_mention_func(ctx, name)
@@ -268,7 +288,7 @@ def handle_update_logic(
 
     # Update the combatant's initiative
     guild_tracker.combatant_dict[name] = new_init
-    guild_tracker.tracker = guild_tracker.build_init_table()
+    guild_tracker.build_init_table()
 
     # Update database if tracker is active
     if guild_tracker.tracker_active:
@@ -281,7 +301,13 @@ def handle_update_logic(
     return f"{name}'s initiative has been manually set to {new_init}.", None
 
 
-def handle_active_logic(guild_tracker, name, ctx, parse_mention_func, set_active_player_func):
+def handle_active_logic(
+    guild_tracker: InitiativeTrack,
+    name: str,
+    ctx: commands.Context,
+    parse_mention_func: Callable[[commands.Context, str], str],
+    set_active_player_func: Callable[[Any, str], None],
+) -> Tuple[str, Optional[discord.Embed]]:
     """Handle the core logic for setting the active combatant."""
     # Parse mention to get display name
     name = parse_mention_func(ctx, name)
@@ -297,14 +323,14 @@ def handle_active_logic(guild_tracker, name, ctx, parse_mention_func, set_active
     # Reset all turn markers and set the active player
     guild_tracker.turn = ["    " for _ in range(len(guild_tracker.combatant_dict))]
     set_active_player_func(guild_tracker, name)
-    guild_tracker.tracker = guild_tracker.build_init_table()
+    guild_tracker.build_init_table()
 
     # Generate response
     embed, table = guild_tracker.embed_template()
     return f"{name} is now the active combatant.\n{table}", embed
 
 
-def handle_rebuild_logic(guild_tracker, ctx):
+def handle_rebuild_logic(guild_tracker: InitiativeTrack, ctx: commands.Context) -> Tuple[str, discord.Embed]:
     """Handle the core logic for rebuilding the tracker from database."""
     # Reset the tracker
     guild_tracker.reset()
@@ -314,7 +340,7 @@ def handle_rebuild_logic(guild_tracker, ctx):
     if all_rows:
         guild_tracker.combatant_dict = {row[0]: row[1] for row in all_rows}
         guild_tracker.turn = ["    " for _ in range(len(guild_tracker.combatant_dict))]
-        guild_tracker.tracker = guild_tracker.build_init_table()
+        guild_tracker.build_init_table()
 
     # Generate response
     embed, table = guild_tracker.embed_template()
@@ -322,7 +348,9 @@ def handle_rebuild_logic(guild_tracker, ctx):
     return message, embed
 
 
-def handle_attack_logic(ctx, bonus, roll_type, init_obj):
+def handle_attack_logic(
+    ctx: commands.Context, bonus: int, roll_type: str, init_obj: Dict[int, Any]
+) -> Tuple[str, Optional[discord.Embed]]:
     """Handle the core logic for player attack rolls."""
     # Valid roll types mapping
     valid_roll_types = {"d": "1d20", "ad": "1ad20", "dd": "1dd20"}
@@ -361,7 +389,7 @@ def handle_attack_logic(ctx, bonus, roll_type, init_obj):
     return f"{ctx.author.mention} rolled to attack.", attack_embed
 
 
-def handle_attack_npc_logic(ctx, bonus, roll_type):
+def handle_attack_npc_logic(ctx: commands.Context, bonus: int, roll_type: str) -> Tuple[str, Optional[discord.Embed]]:
     """Handle the core logic for NPC attack rolls."""
     # Valid roll types mapping
     valid_roll_types = {"d": "1d20", "ad": "1ad20", "dd": "1dd20"}

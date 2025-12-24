@@ -14,7 +14,7 @@ for k in guild_list:
 
 
 @init_bot.event
-async def on_guild_join(guild):
+async def on_guild_join(guild: discord.Guild) -> None:
     global init_obj
     init_obj[guild.id] = init_support.InitiativeTrack()
 
@@ -22,31 +22,31 @@ async def on_guild_join(guild):
 class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
     """Class definition for Initiative Tracker Cog."""
 
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    def _parse_mention(self, ctx, name: str) -> str:
+    def _parse_mention(self, ctx: commands.Context, name: str) -> str:
         """Parse Discord user mentions and return display name."""
         if "!" in name and "@" in name:
             mention_user = name.replace("<", "").replace(">", "").replace("@", "").replace("!", "")
             return ctx.guild.get_member(int(mention_user)).display_name
         return name
 
-    def _find_active_player(self, guild_tracker) -> str:
+    def _find_active_player(self, guild_tracker: init_support.InitiativeTrack) -> str:
         """Find the currently active player in the tracker."""
         for sublist in guild_tracker.tracker:
             if "--->" in sublist:
                 return sublist[1]
         return ""
 
-    def _update_database(self, ctx, guild_tracker):
+    def _update_database(self, ctx: commands.Context, guild_tracker: init_support.InitiativeTrack) -> None:
         """Update the database with current combatant data."""
         db_insert = [(ctx.guild.id, k, v) for k, v in guild_tracker.combatant_dict.items()]
         soulbot_db.init_db_reset(ctx.guild.id)
         soulbot_db.init_db_add(db_insert)
         soulbot_db.init_db_commit()
 
-    def _set_active_player(self, guild_tracker, player_name: str):
+    def _set_active_player(self, guild_tracker: init_support.InitiativeTrack, player_name: str) -> None:
         """Set the active player marker for the specified player."""
         for i, sublist in enumerate(guild_tracker.tracker):
             if player_name in sublist:
@@ -55,13 +55,13 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
                 break
 
     @commands.group(case_insensitive=True, help="Rolls initiative and builds an order table.")
-    async def init(self, ctx):
+    async def init(self, ctx: commands.Context) -> None:
         """Base init command group."""
         if ctx.invoked_subcommand is None:
             await ctx.send(f"Additional arguments required, see **{ctx.prefix}help init** for available options.")
 
     @init.command(help="Clears the Initiative tracker, and starts a new order.")
-    async def reset(self, ctx):
+    async def reset(self, ctx: commands.Context) -> None:
         init_obj[ctx.guild.id].reset()
         soulbot_db.init_db_reset(ctx.guild.id)
         soulbot_db.init_db_commit()
@@ -71,7 +71,7 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
         name="roll",
         help="Rolls your initiative plus the supplied bonus and adds you to the order.",
     )
-    async def init_roll(self, ctx, init_bonus: int = 0):
+    async def init_roll(self, ctx: commands.Context, init_bonus: int = 0) -> None:
         guild_tracker = init_obj[ctx.guild.id]
         player_name = ctx.author.display_name
 
@@ -79,7 +79,7 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
         await ctx.send(message)
 
     @init.command(help="Starts the tracker and prevents any additions.")
-    async def start(self, ctx):
+    async def start(self, ctx: commands.Context) -> None:
         guild_tracker = init_obj[ctx.guild.id]
 
         message, embed = init_support.handle_start_logic(guild_tracker, ctx, self._update_database)
@@ -89,13 +89,13 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
             await ctx.send(message, embed=embed)
 
     @init.command(help="Shows current turn order, rolls and tracker status.")
-    async def show(self, ctx):
+    async def show(self, ctx: commands.Context) -> None:
         guild_tracker = init_obj[ctx.guild.id]
         embed, table = guild_tracker.embed_template()
         await ctx.send(table, embed=embed)
 
     @init.command(name="next", help="Advances the initiative order.")
-    async def next_turn(self, ctx):
+    async def next_turn(self, ctx: commands.Context) -> None:
         guild_tracker = init_obj[ctx.guild.id]
 
         message, embed = init_support.handle_next_turn_logic(guild_tracker, ctx)
@@ -105,7 +105,7 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
             await ctx.send(message, embed=embed)
 
     @init.command(help="Allows a user to delay their turn in the order.")
-    async def delay(self, ctx, new_init: int):
+    async def delay(self, ctx: commands.Context, new_init: int) -> None:
         guild_tracker = init_obj[ctx.guild.id]
         player_name = ctx.author.display_name
 
@@ -119,13 +119,13 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
 
     @init.group(case_insensitive=True, help="Commands for the DM.", name="dm")
     @commands.has_role("DM" or "GM")
-    async def dm_group(self, ctx):
+    async def dm_group(self, ctx: commands.Context) -> None:
         """DM Sub-group."""
         if ctx.invoked_subcommand is None:
             await ctx.send(f"Additional arguments required, see **{ctx.prefix}help init dm** for available options.")
 
     @dm_group.command(help="Add NPCs/Monsters to the initiative order, before or during active combat.")
-    async def npc(self, ctx, npc_name: str, init_bonus: int = 0):
+    async def npc(self, ctx: commands.Context, npc_name: str, init_bonus: int = 0) -> None:
         guild_tracker = init_obj[ctx.guild.id]
 
         message, error = init_support.handle_npc_logic(
@@ -141,7 +141,7 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
         await ctx.send(message)
 
     @dm_group.command(help="Allows DM to manipulate the Escalation Die.  Value can be plus or minus.  Default = 1")
-    async def escalate(self, ctx, value_change: int = 1):
+    async def escalate(self, ctx: commands.Context, value_change: int = 1) -> None:
         guild_tracker = init_obj[ctx.guild.id]
 
         if not guild_tracker.tracker_active:
@@ -157,7 +157,7 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
         'Specified name for NPCs is case sensitive, use "" around name if '
         "it includes spaces.  Players can be @ mentioned."
     )
-    async def remove(self, ctx, name: str):
+    async def remove(self, ctx: commands.Context, name: str) -> None:
         guild_tracker = init_obj[ctx.guild.id]
 
         message, error = init_support.handle_remove_logic(
@@ -176,7 +176,7 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
         'Specified name for NPCs is case sensitive, use "" around the name '
         "if it includes spaces.  Players must be @ mentioned."
     )
-    async def update(self, ctx, name: str, new_init: int):
+    async def update(self, ctx: commands.Context, name: str, new_init: int) -> None:
         guild_tracker = init_obj[ctx.guild.id]
 
         message, error = init_support.handle_update_logic(
@@ -192,7 +192,7 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
         await ctx.send(message)
 
     @dm_group.command(help="Allows DM to manually change who is the active combatant.")
-    async def active(self, ctx, name: str):
+    async def active(self, ctx: commands.Context, name: str) -> None:
         guild_tracker = init_obj[ctx.guild.id]
 
         message, embed = init_support.handle_active_logic(
@@ -208,7 +208,7 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
         "Rebuild the init tracker from the backup database.  "
         "Deactivates and resets the tracker, and resets the escalation die."
     )
-    async def rebuild(self, ctx):
+    async def rebuild(self, ctx: commands.Context) -> None:
         guild_tracker = init_obj[ctx.guild.id]
 
         message, embed = init_support.handle_rebuild_logic(guild_tracker, ctx)
@@ -218,7 +218,7 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
     @npc.error
     @update.error
     @rebuild.error
-    async def on_dm_error(self, ctx, error):
+    async def on_dm_error(self, ctx: commands.Context, error: commands.CommandError) -> None:
         """Handle errors for DM-specific commands."""
         if isinstance(error, commands.MissingRole):
             await ctx.send(f"{error}")
@@ -239,7 +239,7 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
         "to attack, command automatically includes "
         "escalation die(if any). Default bonus = 0"
     )
-    async def attack(self, ctx, bonus: int = 0, roll_type: str = "d"):
+    async def attack(self, ctx: commands.Context, bonus: int = 0, roll_type: str = "d") -> None:
         """Roll an attack with the specified bonus and roll type."""
         message, embed = init_support.handle_attack_logic(ctx, bonus, roll_type, init_obj)
         if embed:
@@ -251,7 +251,7 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
         help="Rolls 1d20 + supplied NPC bonus to attack, excludes escalation die. Default bonus = 0",
         name="attacknpc",
     )
-    async def attack_npc(self, ctx, bonus: int = 0, roll_type: str = "d"):
+    async def attack_npc(self, ctx: commands.Context, bonus: int = 0, roll_type: str = "d") -> None:
         message, embed = init_support.handle_attack_npc_logic(ctx, bonus, roll_type)
         if embed:
             await ctx.send(message, embed=embed)
@@ -261,7 +261,7 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
     @attack.error
     @attack_npc.error
     @init_roll.error
-    async def cog_command_error(self, ctx, error):
+    async def cog_command_error(self, ctx: commands.Context, error: Exception) -> None:
         if isinstance(error, commands.CommandInvokeError):
             print(error)
             await ctx.send("An error occurred with the last command.")
@@ -273,6 +273,6 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
             await ctx.send(f"Error Encountered:\n{error}")
 
 
-def setup(bot):
+def setup(bot: commands.Bot) -> None:
     """Discord module required setup for Cog loading."""
     bot.add_cog(InitiativeTracker(bot))
