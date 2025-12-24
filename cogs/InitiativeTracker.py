@@ -2,65 +2,21 @@
 
 import discord
 from discord.ext import commands
-from tabulate import tabulate
 
 import init_support
 from soulbot import bot as init_bot
 from soulbot_support import soulbot_db
 
-
-class InitiativeTrack:
-    """Class definition for the Initiative tracking object."""
-
-    def __init__(self):
-        self.combatant_dict: dict[str, int] = {}
-        self.tracker: list[tuple[str, int]] = []
-        self.tracker_active: bool = False
-        self.turn: list[str] = []
-        self.escalation: int = 0
-
-    def reset(self):
-        """Resets all tracking values to defaults."""
-        self.__init__()
-
-    def build_init_table(self):
-        """Takes combatant dictionary, sorts it by key value,
-        then builds the initiative activity table.
-        """
-        # Sort combatants by initiative value in descending order
-        sorted_combatants = sorted(self.combatant_dict.items(), key=lambda x: x[1], reverse=True)
-
-        # Build table with turn markers
-        table = []
-        for i, (name, initiative) in enumerate(sorted_combatants):
-            turn_marker = self.turn[i] if i < len(self.turn) else "    "
-            table.append([turn_marker, name, initiative])
-
-        return table
-
-    def embed_template(self):
-        """Initiative tracker embed generator."""
-        init_table = tabulate(
-            self.tracker,
-            headers=["Active", "Player", "Initiative"],
-            tablefmt="fancy_grid",
-        )
-        embed = discord.Embed(colour=discord.Colour.red())
-        embed.add_field(name="Tracker Active", value=str(self.tracker_active))
-        embed.add_field(name="Escalation Die", value=str(self.escalation))
-        return embed, f"```{init_table}```"
-
-
-init_obj = {}
+init_obj: dict[int, init_support.InitiativeTrack] = {}
 guild_list = soulbot_db.config_all_prefix_load()
 for k in guild_list:
-    init_obj[k] = InitiativeTrack()
+    init_obj[k] = init_support.InitiativeTrack()
 
 
 @init_bot.event
 async def on_guild_join(guild):
     global init_obj
-    init_obj[guild.id] = InitiativeTrack()
+    init_obj[guild.id] = init_support.InitiativeTrack()
 
 
 class InitiativeTracker(discord.Cog, name="Initiative Tracker"):

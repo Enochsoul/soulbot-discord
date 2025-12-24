@@ -1,12 +1,55 @@
 """Support functions for Initiative Tracker async function capabilities."""
 
 import discord
+from discord.ext import commands
+from tabulate import tabulate
 
 from DiceRoller import die_roll
 from soulbot_support import soulbot_db
 
 
-def handle_init_roll_logic(guild_tracker, player_name, init_bonus):
+class InitiativeTrack:
+    """Class definition for the Initiative tracking object."""
+
+    def __init__(self) -> None:
+        self.combatant_dict: dict[str, int] = {}
+        self.tracker: list[tuple[str, str, int]] = []
+        self.tracker_active: bool = False
+        self.turn: list[str] = []
+        self.escalation: int = 0
+
+    def reset(self) -> None:
+        """Resets all tracking values to defaults."""
+        self.__init__()
+
+    def build_init_table(self) -> None:
+        """Takes combatant dictionary, sorts it by key value,
+        then builds the initiative activity table.
+        """
+        # Sort combatants by initiative value in descending order
+        sorted_combatants = sorted(self.combatant_dict.items(), key=lambda x: x[1], reverse=True)
+
+        # Build table with turn markers
+        table = []
+        for i, (name, initiative) in enumerate(sorted_combatants):
+            turn_marker = self.turn[i] if i < len(self.turn) else "    "
+            table.append([turn_marker, name, initiative])
+        self.tracker = table
+
+    def embed_template(self) -> tuple[discord.Embed, str]:
+        """Initiative tracker embed generator."""
+        init_table = tabulate(
+            self.tracker,
+            headers=["Active", "Player", "Initiative"],
+            tablefmt="fancy_grid",
+        )
+        embed = discord.Embed(colour=discord.Colour.red())
+        embed.add_field(name="Tracker Active", value=str(self.tracker_active))
+        embed.add_field(name="Escalation Die", value=str(self.escalation))
+        return embed, f"```{init_table}```"
+
+
+def handle_init_roll_logic(guild_tracker: InitiativeTrack, player_name: str, init_bonus: int) -> str:
     """Handle the core logic for initiative rolling."""
     if guild_tracker.tracker_active:
         return "Initiative Tracker is locked in an active combat session."
