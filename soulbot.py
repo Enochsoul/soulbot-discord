@@ -273,7 +273,6 @@ def load_extensions(bot: SoulBot, config: Dict[str, Any]) -> None:
     # Load configured cogs
     for cog in config.get("load_cogs", []):
         try:
-            logger.info(f"Loading {cog}")
             bot.load_extension(f"cogs.{cog}")
         except discord.ExtensionNotLoaded as e:
             logger.error(f"Extension not loaded for {cog}: {e}")

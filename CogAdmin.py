@@ -5,6 +5,7 @@ import os
 
 import discord
 from discord.ext import commands
+from loguru import logger
 from tabulate import tabulate
 
 from soulbot import bot_config
@@ -15,6 +16,7 @@ class CogAdmin(discord.Cog, name="Cog Admin"):
 
     def __init__(self, bot):
         self.bot = bot
+        logger.info("CogAdmin cog initialized")
 
     @commands.group(help="Commands for administrating Cogs.", name="cogs")
     @commands.has_guild_permissions(manage_guild=True)
@@ -41,6 +43,7 @@ class CogAdmin(discord.Cog, name="Cog Admin"):
             cog_status.append([cog, loaded, startup])
         cogs_table = tabulate(cog_status, headers=["Cog Name", "Loaded?", "Startup?"], tablefmt="simple")
         embed = discord.Embed(title="Available Cogs:", description=f"```{cogs_table}```")
+        logger.info(f"User {ctx.author} requested cog list")
         await ctx.send(embed=embed)
 
     @cogs_group.command(help="Activate a Cog. Case sensitive.", name="load")
@@ -53,11 +56,15 @@ class CogAdmin(discord.Cog, name="Cog Admin"):
         """
         try:
             self.bot.load_extension(f"cogs.{cog}")
+            logger.info(f"User {ctx.author} loaded cog: {cog}")
         except discord.ExtensionAlreadyLoaded:
+            logger.warning(f"User {ctx.author} tried to load already loaded cog: {cog}")
             await ctx.send(f"{cog} is already loaded.")
         except discord.ExtensionNotFound:
+            logger.warning(f"User {ctx.author} tried to load non-existent cog: {cog}")
             await ctx.send(f"{cog} not found.")
         except Exception as e:
+            logger.error(f"Error loading cog {cog}: {e}")
             await ctx.send(f"Error: {e}")
         else:
             await ctx.send(f"{cog} loaded.")
@@ -72,9 +79,12 @@ class CogAdmin(discord.Cog, name="Cog Admin"):
         """
         try:
             self.bot.unload_extension(f"cogs.{cog}")
+            logger.info(f"User {ctx.author} unloaded cog: {cog}")
         except discord.ExtensionNotFound:
+            logger.warning(f"User {ctx.author} tried to unload non-existent cog: {cog}")
             await ctx.send(f"{cog} not found.")
         except Exception as e:
+            logger.error(f"Error unloading cog {cog}: {e}")
             await ctx.send(f"Error: {e}")
         else:
             await ctx.send(f"{cog} unloaded.")
@@ -90,13 +100,18 @@ class CogAdmin(discord.Cog, name="Cog Admin"):
         try:
             self.bot.unload_extension(f"cogs.{cog}")
             self.bot.load_extension(f"cogs.{cog}")
+            logger.info(f"User {ctx.author} reloaded cog: {cog}")
         except discord.ExtensionAlreadyLoaded:
+            logger.warning(f"User {ctx.author} tried to reload already loaded cog: {cog}")
             await ctx.send(f"{cog} is already loaded.")
         except discord.ExtensionNotFound:
+            logger.warning(f"User {ctx.author} tried to reload non-existent cog: {cog}")
             await ctx.send(f"{cog} not found.")
         except discord.ExtensionNotLoaded:
+            logger.warning(f"User {ctx.author} tried to reload unloaded cog: {cog}")
             await ctx.send(f"{cog} wasn't loaded, please load it first.")
         except Exception as e:
+            logger.error(f"Error reloading cog {cog}: {e}")
             await ctx.send(f"Error: {e}")
         else:
             await ctx.send(f"{cog} reloaded.")
@@ -118,8 +133,10 @@ class CogAdmin(discord.Cog, name="Cog Admin"):
                 # Write running config out to disk.
                 with open("soulbot.conf", "w") as outfile:
                     json.dump(bot_config, outfile)
+                logger.info(f"User {ctx.author} added cog {cog} to startup list")
                 await ctx.send(f"{cog} added to startup list.")
             else:
+                logger.warning(f"User {ctx.author} tried to add invalid cog to startup: {cog}")
                 await ctx.send(f"{cog} is not a valid Cog name.")
         else:
             await ctx.send(f"{cog} is already in the startup list.")
@@ -139,8 +156,10 @@ class CogAdmin(discord.Cog, name="Cog Admin"):
                 bot_config["load_cogs"].remove(cog)
                 with open("soulbot.conf", "w") as outfile:
                     json.dump(bot_config, outfile)
+                logger.info(f"User {ctx.author} removed cog {cog} from startup list")
                 await ctx.send(f"{cog} removed from the startup list.")
             else:
+                logger.warning(f"User {ctx.author} tried to remove invalid cog from startup: {cog}")
                 await ctx.send(f"{cog} is not a valid Cog name.")
         else:
             await ctx.send(f"{cog} is not in the startup list.")
@@ -149,9 +168,11 @@ class CogAdmin(discord.Cog, name="Cog Admin"):
     @load_cog.error
     async def cog_command_error(self, ctx, error):
         """Sends any command errors to the channel."""
+        logger.error(f"CogAdmin command error: {error}")
         await ctx.send(str(error))
 
 
 def setup(bot):
     """Discord module required setup for Cog loading."""
+    logger.info("Loading CogAdmin cog")
     bot.add_cog(CogAdmin(bot))

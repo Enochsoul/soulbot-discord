@@ -4,6 +4,7 @@ import random
 
 import discord
 from discord.ext import commands
+from loguru import logger
 
 
 def warp_element():
@@ -65,6 +66,7 @@ class ChaosMageCommands(discord.Cog, name="Chaos Mage Commands"):
 
     def __init__(self, bot):
         self.bot = bot
+        logger.info("ChaosMageCommands cog initialized")
 
     @commands.group(
         name="chaos",
@@ -81,6 +83,7 @@ class ChaosMageCommands(discord.Cog, name="Chaos Mage Commands"):
     async def refill(self, ctx):
         """Command to refill the enacting user's pool."""
         chaos_mages.refill(str(ctx.guild.id) + ctx.author.display_name)
+        logger.info(f"User {ctx.author} in guild {ctx.guild.name} refilled chaos mage pool")
         await ctx.send(f"{ctx.author.mention}'s spell determination pool has been refilled.")
 
     @chaos_main.command(help="Draw a random spell type from your spell determination pool.")
@@ -90,6 +93,7 @@ class ChaosMageCommands(discord.Cog, name="Chaos Mage Commands"):
             if len(chaos_mages.mages[str(ctx.guild.id) + ctx.author.display_name]) == 2:
                 spell_type = chaos_mages.draw(str(ctx.guild.id) + ctx.author.display_name)
                 chaos_mages.refill(str(ctx.guild.id) + ctx.author.display_name)
+                logger.info(f"User {ctx.author} drew chaos spell (auto-refilled): {spell_type}")
                 await ctx.send(
                     f"{ctx.author.mention}, your next spell will be:"
                     f"\n{spell_type}\n"
@@ -101,8 +105,10 @@ class ChaosMageCommands(discord.Cog, name="Chaos Mage Commands"):
                     f"{ctx.author.mention}, your next spell will be:"
                     f"\n{chaos_mages.draw(str(ctx.guild.id) + ctx.author.display_name)}"
                 )
+                logger.info(f"User {ctx.author} drew chaos spell: {spell_type}")
         else:
             chaos_mages.refill(str(ctx.guild.id) + ctx.author.display_name)
+            logger.info(f"User {ctx.author} created new chaos mage pool and drew: {spell_type}")
             await ctx.send(
                 f"{ctx.author.mention}'s pool was empty and has been filled. "
                 f"Your next spell will be:"
@@ -113,8 +119,10 @@ class ChaosMageCommands(discord.Cog, name="Chaos Mage Commands"):
     async def warp(self, ctx):
         """Command calls warp_element function to return random element."""
         await ctx.send(f"{ctx.author.mention}, your warp element is: **{warp_element()}**")
+        logger.info(f"User {ctx.author} rolled warp element: {element}")
 
 
 def setup(bot):
     """Discord module required setup for Cog loading."""
+    logger.info("Loading ChaosMageCommands cog")
     bot.add_cog(ChaosMageCommands(bot))
