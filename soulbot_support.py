@@ -139,11 +139,6 @@ class DatabaseIO:
             logger.error(f"Error rebuilding initiative data: {e}")
             raise
 
-    def init_db_commit(self) -> None:
-        """Commits changes to the database. Kept for compatibility."""
-        # With SQLAlchemy and context managers, commits are handled automatically
-        pass
-
     def quote_db_add(self, quote_insert: str, guild_id: int) -> None:
         """Add new quote to the database.
 

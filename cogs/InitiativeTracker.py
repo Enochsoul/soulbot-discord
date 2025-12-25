@@ -47,7 +47,6 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
         db_insert = [(ctx.guild.id, k, v) for k, v in guild_tracker.combatant_dict.items()]
         soulbot_db.init_db_reset(ctx.guild.id)
         soulbot_db.init_db_add(db_insert)
-        soulbot_db.init_db_commit()
         logger.debug(f"Updated initiative database for guild {ctx.guild.name}")
 
     def _set_active_player(self, guild_tracker: init_support.InitiativeTrack, player_name: str) -> None:
@@ -68,7 +67,6 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
     async def reset(self, ctx: commands.Context) -> None:
         init_obj[ctx.guild.id].reset()
         soulbot_db.init_db_reset(ctx.guild.id)
-        soulbot_db.init_db_commit()
         logger.info(f"User {ctx.author} reset initiative tracker in guild {ctx.guild.name}")
         await ctx.send("Initiative Tracker is reset and active.")
 
