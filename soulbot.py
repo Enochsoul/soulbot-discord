@@ -1,202 +1,300 @@
 """A discord bot with commands used to assist game play for the 13th Age RPG."""
 
 import json
+import pathlib
 from datetime import timedelta
-from typing import Any, Dict, List
+from typing import Any, Dict, Union
 
 import arrow
 import discord
 from discord.ext import commands, tasks
+from loguru import logger
 
-from soulbot_support import CT, ET, MT, PT, soulbot_db
+from soulbot_support import soulbot_db
 
-intents = discord.Intents.default()
-intents.members = True
-intents.message_content = True
+# Constants
+VALID_TIMEZONES = ["ET", "CT", "MT", "PT"]
+CONFIG_FILE = "soulbot.conf"
+ANNOUNCEMENT_CHECK_INTERVAL = 1  # minutes
+ANNOUNCEMENT_THRESHOLD = 3600  # seconds (1 hour)
+LOG_LOCATION = pathlib.Path("logs/soulbot.log")
 
-with open("soulbot.conf", "r") as config_file:
-    bot_config: Dict[str, Any] = json.load(config_file)
-token: str = bot_config["discord_token"]
-
-
-def get_prefix(bot: commands.Bot, message: discord.Message) -> str:
-    """Used to load all the prefixes from the config database and
-    return the correct one from the calling server.
-    """
-    prefixes: Dict[int, str] = soulbot_db.config_all_prefix_load()
-    if message.guild.id in list(prefixes.keys()):
-        return prefixes[message.guild.id]
-    else:
-        return bot_config["command_prefix"]
+# Setup Logging
+logger.add(LOG_LOCATION, rotation="1 MB", retention="30 days")
 
 
-bot = commands.Bot(command_prefix=get_prefix, intents=intents)
+class SoulBot(commands.Bot):
+    """Custom bot class for 13th Age RPG assistance."""
+
+    def __init__(self, config: Dict[str, Any]):
+        self.config = config
+
+        intents = discord.Intents.default()
+        intents.members = True
+        intents.message_content = True
+        logger.info(f"Initializing SoulBot with config: {config}\nIntents: {dict(intents)}")
+
+        super().__init__(command_prefix=self._get_prefix, intents=intents)
+
+    def _get_prefix(self, bot: Union[commands.Bot, commands.AutoShardedBot], message: discord.Message) -> str:
+        """Get the command prefix for a specific guild."""
+        if not message.guild:
+            return self.config["command_prefix"]
+
+        prefixes = soulbot_db.config_all_prefix_load()
+        return prefixes.get(message.guild.id, self.config["command_prefix"])
 
 
-@bot.group(help="Configuration Commands.")
-@commands.has_guild_permissions(manage_guild=True)
-async def config(ctx: commands.Context) -> None:
-    if ctx.invoked_subcommand is None:
-        await ctx.send(f"Additional arguments required, see **{ctx.prefix}help config** for available options.")
+class ConfigCommands(commands.Cog):
+    """Configuration commands for the bot."""
 
+    def __init__(self, bot: SoulBot):
+        self.bot = bot
 
-@config.command(help="Changes the bot command prefix.", name="prefix")
-async def set_prefix(ctx: commands.Context, prefix: str) -> None:
-    """Takes in a prefix from the user, and updates the bot config."""
-    soulbot_db.config_prefix_update(ctx.guild.id, prefix)
-    await ctx.send(f"Prefix now set to {prefix}.")
+    @commands.group(help="Configuration Commands.")
+    @commands.has_guild_permissions(manage_guild=True)
+    async def config(self, ctx: commands.Context) -> None:
+        """Main configuration command group."""
+        if ctx.invoked_subcommand is None:
+            await ctx.send(f"Additional arguments required, see **{ctx.prefix}help config** for available options.")
 
+    @config.command(help="Changes the bot command prefix.", name="prefix")
+    async def set_prefix(self, ctx: commands.Context, prefix: str) -> None:
+        """Update the bot command prefix for this guild."""
+        if not ctx.guild:
+            await ctx.send("This command can only be used in a guild.")
+            return
 
-@config.command(help="Set Next Game default start time.", name="time")
-async def next_game_time(ctx: commands.Context, default_time: str, default_timezone: str) -> None:
-    """Command to set the default start time in the next_game module.
+        soulbot_db.config_prefix_update(ctx.guild.id, prefix)
+        await ctx.send(f"Prefix now set to {prefix}.")
 
-    :param default_time: Time string
-    :param default_timezone: Timezone string
-    :param ctx: Discord context object
-    """
-    try:
-        sch_hour, sch_minute = [int(i) for i in default_time.split(":")]
-        if (sch_hour > 24) or (sch_minute > 59):
-            await ctx.send("Please use 24 hour time in the format: HH:MM TZ(Eg: 19:00 ET)")
-        elif default_timezone.upper() not in ["ET", "CT", "MT", "PT"]:
-            await ctx.send("Please indicate your timezone, ET, CT, MT, or PT.")
-        else:
-            time_output: str = default_time + " " + default_timezone.upper()
-            soulbot_db.config_next_game_default_time_update(ctx.guild.id, time_output)
-            await ctx.send(f"NextGameScheduler default game start time is now set to {time_output}.")
-    except ValueError:
-        await ctx.send("Please use 24 hour time in the format: HH:MM TZ(Eg: 19:00 ET)")
+    @config.command(help="Set Next Game default start time.", name="time")
+    async def next_game_time(self, ctx: commands.Context, default_time: str, default_timezone: str) -> None:
+        """Set the default start time for the next game module."""
+        if not ctx.guild:
+            await ctx.send("This command can only be used in a guild.")
+            return
 
+        validation_result = self._validate_time_input(default_time, default_timezone)
+        if validation_result["error"]:
+            await ctx.send(validation_result["message"])
+            return
 
-@config.command(help="Set Next Game default game interval in days.", name="interval")
-async def next_game_interval(ctx: commands.Context, default_interval: int) -> None:
-    """Command to set the next_game module default interval.
+        time_output = f"{default_time} {default_timezone.upper()}"
+        soulbot_db.config_next_game_default_time_update(ctx.guild.id, time_output)
+        await ctx.send(f"NextGameScheduler default game start time is now set to {time_output}.")
 
-    :param default_interval: Interval in days.
-    :param ctx: Discord context object
-    """
-    soulbot_db.config_next_game_default_interval_update(ctx.guild.id, default_interval)
-    await ctx.send(f"NextGameScheduler default game interval is now set to {default_interval} days.")
+    @config.command(help="Set Next Game default game interval in days.", name="interval")
+    async def next_game_interval(self, ctx: commands.Context, default_interval: int) -> None:
+        """Set the default interval for the next game module."""
+        if not ctx.guild:
+            await ctx.send("This command can only be used in a guild.")
+            return
 
+        soulbot_db.config_next_game_default_interval_update(ctx.guild.id, default_interval)
+        await ctx.send(f"NextGameScheduler default game interval is now set to {default_interval} days.")
 
-@config.command(
-    help="Configure the text channel to send the Next Game announcements to.  Default: general",
-    name="announce",
-)
-async def next_game_announce_channel(ctx: commands.Context, channel_name: str) -> None:
-    """Command to set the channel Next Game announcements are sent to.
+    @config.command(
+        help="Configure the text channel to send the Next Game announcements to. Default: general",
+        name="announce",
+    )
+    async def next_game_announce_channel(self, ctx: commands.Context, channel_name: str) -> None:
+        """Set the channel for Next Game announcements."""
+        if not ctx.guild:
+            await ctx.send("This command can only be used in a guild.")
+            return
 
-    :param ctx: Discord context object.
-    :param channel_name: String name of channel.
-    """
-    all_channels: List[str] = []
-    for channel in ctx.guild.text_channels:
-        all_channels.append(channel.name)
-    if channel_name in all_channels:
+        valid_channels = [channel.name for channel in ctx.guild.text_channels]
+
+        if channel_name not in valid_channels:
+            await ctx.send(f"{channel_name} is not a valid text channel. Please try again.")
+            return
+
         soulbot_db.config_next_game_announce_channel(ctx.guild.id, channel_name)
         await ctx.send(f"Next Game Scheduler announcements will be sent to {channel_name}.")
-    else:
-        await ctx.send(f"{channel_name} is not a valid text channel.  Please try again.")
+
+    def _validate_time_input(self, time_str: str, timezone_str: str) -> Dict[str, Any]:
+        """Validate time and timezone input."""
+        try:
+            hour, minute = map(int, time_str.split(":"))
+
+            if hour > 23 or minute > 59:  # Fixed: hour should be 0-23, not 0-24
+                return {"error": True, "message": "Please use 24 hour time in the format: HH:MM TZ(Eg: 19:00 ET)"}
+
+            if timezone_str.upper() not in VALID_TIMEZONES:
+                return {"error": True, "message": "Please indicate your timezone: ET, CT, MT, or PT."}
+
+            return {"error": False, "message": ""}
+
+        except ValueError:
+            return {"error": True, "message": "Please use 24 hour time in the format: HH:MM TZ(Eg: 19:00 ET)"}
+
+    @set_prefix.error
+    @next_game_time.error
+    @next_game_interval.error
+    async def config_error(self, ctx: commands.Context, error: commands.CommandError) -> None:
+        """Error handler for configuration commands."""
+        if isinstance(error, commands.BadArgument):
+            await ctx.send("Please use numeric values only for the game interval.")
+        elif isinstance(error, commands.MissingPermissions):
+            await ctx.send(str(error))
+        else:
+            logger.error(f"Config command error: {error}")
+            await ctx.send(f"Experienced the following error:\n{error}")
 
 
-@set_prefix.error
-@next_game_time.error
-@next_game_interval.error
-async def config_error(ctx: commands.Context, error: commands.CommandError) -> None:
-    """Error catching for the config commands."""
-    if isinstance(error, commands.BadArgument):
-        await ctx.send("Please use numeric values only for the game interval.")
-    # Catching errors if the user doesn't have permission to run the setprefix command.
-    elif isinstance(error, commands.MissingPermissions):
-        await ctx.send(f"{error}")
-    else:
-        await ctx.send(f"Experienced the following error:\n{error}")
+class GameAnnouncer:
+    """Handles game announcement functionality."""
 
+    def __init__(self, bot: SoulBot):
+        self.bot = bot
 
-@bot.event
-async def on_command_error(ctx: commands.Context, error: commands.CommandError) -> None:
-    """Catching errors if user tries running a command that doesn't exist."""
-    if isinstance(error, commands.errors.CommandNotFound):
-        await ctx.send(
-            f"{ctx.prefix}{ctx.invoked_with} is not a valid command.  See **{ctx.prefix}help** for available commands."
-        )
+    @tasks.loop(minutes=ANNOUNCEMENT_CHECK_INTERVAL)
+    async def game_announce_task(self) -> None:
+        """Check for upcoming games and send announcements."""
+        try:
+            announce_check = soulbot_db.next_game_get_all_announcing()
 
+            for server_data in announce_check:
+                await self._process_server_announcement(server_data)
 
-@bot.event
-async def on_guild_join(guild: discord.Guild) -> None:
-    soulbot_db.config_insert_all(
-        guild.id,
-        bot_config["command_prefix"],
-        bot_config["next_game_time"],
-        bot_config["next_game_interval"],
-        bot_config["announce_channel"],
-    )
+        except Exception as e:
+            logger.error(f"Error in game announcement task: {e}")
 
+    async def _process_server_announcement(self, server_data: tuple) -> None:
+        """Process announcement for a single server."""
+        guild_id, scheduled_time = server_data[0], server_data[1]
 
-@bot.event
-async def on_guild_remove(guild: discord.Guild) -> None:
-    soulbot_db.guild_remove_all(guild.id)
-
-
-@tasks.loop(minutes=5)
-async def game_announce() -> None:
-    """Discord task loop to check if the next game will start in the next 60 minutes."""
-    announce_check = soulbot_db.next_game_get_all_announcing()
-
-    for server in announce_check:
-        guild = bot.get_guild(server[0])
+        guild = self.bot.get_guild(guild_id)
         if not guild:
-            continue
+            logger.warning(f"Guild {guild_id} not found")
+            return
 
         config = soulbot_db.config_load_guild(guild.id)
         channel = discord.utils.get(guild.text_channels, name=config["announce_channel"])
         if not channel:
-            continue
+            logger.warning(f"Announcement channel not found for guild {guild.id}")
+            return
 
-        next_game_scheduled: arrow.Arrow = arrow.get(server[1])
+        next_game_scheduled = arrow.get(scheduled_time)
         countdown = next_game_scheduled - arrow.utcnow()
 
-        if countdown.seconds < 3600 and countdown.days == 0:
-            await _send_game_announcement(channel, countdown, guild.id)
+        # Check if we're within 60 minutes (3600 seconds) of the scheduled time
+        total_seconds_remaining = countdown.total_seconds()
+
+        # Trigger announcement if within 60 minutes and game hasn't passed
+        if 0 <= total_seconds_remaining <= ANNOUNCEMENT_THRESHOLD:
+            await self._send_announcement(channel, countdown, guild.id)
+
+    async def _send_announcement(self, channel: discord.TextChannel, countdown: timedelta, guild_id: int) -> None:
+        """Send the actual game announcement."""
+        soulbot_db.next_game_announce_toggle(0, guild_id)
+
+        # Calculate minutes remaining more accurately
+        total_seconds = countdown.total_seconds()
+        minutes_remaining = max(0, int(total_seconds // 60))
+
+        if minutes_remaining > 0:
+            await channel.send(
+                f"@here Next game in {minutes_remaining} minutes!\nFurther announcements have been disabled."
+            )
+        else:
+            await channel.send("@here Next game is starting now!\nFurther announcements have been disabled.")
 
 
-async def _send_game_announcement(channel: discord.TextChannel, countdown: timedelta, guild_id: int) -> None:
-    """Send game announcement message and disable further announcements."""
-    soulbot_db.next_game_announce_toggle(0, guild_id)
-    minutes, _ = divmod(countdown.seconds, 60)
-    await channel.send(f"@here Next game in {minutes} minutes!\nFurther announcements have been disabled.")
-
-
-# =========================================================
-# Bot Start
-# =========================================================
-
-
-@bot.event
-async def on_ready() -> None:
-    """Bot readiness indicator on the script console."""
-    print(f"{bot.user.name} has connected to Discord.")
+def load_config() -> Dict[str, Any]:
+    """Load bot configuration from file."""
     try:
-        game_announce.start()
-    except RuntimeError:
-        pass
+        with open(CONFIG_FILE, "r") as config_file:
+            return json.load(config_file)
+    except FileNotFoundError:
+        logger.error(f"Configuration file {CONFIG_FILE} not found")
+        raise
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON in configuration file: {e}")
+        raise
 
+
+def setup_bot() -> SoulBot:
+    """Initialize and configure the bot."""
+    config = load_config()
+    bot = SoulBot(config)
+
+    # Add event handlers
+    @bot.event
+    async def on_command_error(ctx: commands.Context, error: commands.CommandError) -> None:
+        """Handle command errors."""
+        if isinstance(error, commands.errors.CommandNotFound):
+            await ctx.send(
+                f"{ctx.prefix}{ctx.invoked_with} is not a valid command. "
+                f"See **{ctx.prefix}help** for available commands."
+            )
+
+    @bot.event
+    async def on_guild_join(guild: discord.Guild) -> None:
+        """Handle bot joining a new guild."""
+        soulbot_db.config_insert_all(
+            guild.id,
+            config["command_prefix"],
+            config["next_game_time"],
+            config["next_game_interval"],
+            config["announce_channel"],
+        )
+        logger.info(f"Joined guild: {guild.name} ({guild.id})")
+
+    @bot.event
+    async def on_guild_remove(guild: discord.Guild) -> None:
+        """Handle bot being removed from a guild."""
+        soulbot_db.guild_remove_all(guild.id)
+        logger.info(f"Left guild: {guild.name} ({guild.id})")
+
+    @bot.event
+    async def on_ready() -> None:
+        """Handle bot ready event."""
+        if bot.user:
+            logger.info(f"{bot.user.name} has connected to Discord.")
+
+        # Start the game announcement task
+        if not announcer.game_announce_task.is_running():
+            announcer.game_announce_task.start()
+
+    return bot
+
+
+def load_extensions(bot: SoulBot, config: Dict[str, Any]) -> None:
+    """Load bot extensions and cogs."""
+    # Load DiceRoller extension
+    try:
+        bot.load_extension("DiceRoller")
+        logger.info("Loaded DiceRoller extension")
+    except Exception as e:
+        logger.error(f"Failed to load DiceRoller: {e}")
+
+    # Load configured cogs
+    for cog in config.get("load_cogs", []):
+        try:
+            logger.info(f"Loading {cog}")
+            bot.load_extension(f"cogs.{cog}")
+        except discord.ExtensionNotLoaded as e:
+            logger.error(f"Extension not loaded for {cog}: {e}")
+        except discord.ExtensionFailed as e:
+            logger.error(f"Extension failed for {cog}: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error loading {cog}: {e}")
+
+
+# Initialize components
+bot_config = load_config()
+bot = setup_bot()
+announcer = GameAnnouncer(bot)
+
+# Add cogs
+bot.add_cog(ConfigCommands(bot))
 
 if __name__ == "__main__":
-    bot.load_extension("DiceRoller")
-    for cog in bot_config["load_cogs"]:
-        try:
-            print(f"Loading {cog}")
-            bot.load_extension(f"cogs.{cog}")
-        except discord.ExtensionNotLoaded as cog_error:
-            print(f"There was a problem loading Cog {cog}.\nException:\n{cog_error}")
-        except discord.ExtensionFailed as cog_error:
-            print(f"There was an unexpected error loading {cog}:\n{cog_error}")
-        except Exception as cog_error:
-            print(f"There was an unexpected error loading {cog}:\n{cog_error}")
+    load_extensions(bot, bot_config)
 
     try:
-        bot.run(token)
-    except Exception as bot_error:
-        print(f"Got the following error trying to startup the bot, check your config and try again.\n\n{bot_error}")
+        bot.run(bot_config["discord_token"])
+    except Exception as e:
+        logger.error(f"Bot startup error: {e}")
