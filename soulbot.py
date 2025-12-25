@@ -1,6 +1,8 @@
 """A discord bot with commands used to assist game play for the 13th Age RPG."""
 
 import json
+from datetime import timedelta
+from typing import Any, Dict, List
 
 import arrow
 import discord
@@ -12,16 +14,16 @@ intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
 
-with open("soulbot.conf", "r") as config:
-    bot_config = json.load(config)
-token = bot_config["discord_token"]
+with open("soulbot.conf", "r") as config_file:
+    bot_config: Dict[str, Any] = json.load(config_file)
+token: str = bot_config["discord_token"]
 
 
-def get_prefix(bot, message):
+def get_prefix(bot: commands.Bot, message: discord.Message) -> str:
     """Used to load all the prefixes from the config database and
     return the correct one from the calling server.
     """
-    prefixes = soulbot_db.config_all_prefix_load()
+    prefixes: Dict[int, str] = soulbot_db.config_all_prefix_load()
     if message.guild.id in list(prefixes.keys()):
         return prefixes[message.guild.id]
     else:
@@ -33,27 +35,26 @@ bot = commands.Bot(command_prefix=get_prefix, intents=intents)
 
 @bot.group(help="Configuration Commands.")
 @commands.has_guild_permissions(manage_guild=True)
-async def config(ctx):
+async def config(ctx: commands.Context) -> None:
     if ctx.invoked_subcommand is None:
         await ctx.send(f"Additional arguments required, see **{ctx.prefix}help config** for available options.")
 
 
 @config.command(help="Changes the bot command prefix.", name="prefix")
-async def set_prefix(ctx, prefix: str):
+async def set_prefix(ctx: commands.Context, prefix: str) -> None:
     """Takes in a prefix from the user, and updates the bot config."""
     soulbot_db.config_prefix_update(ctx.guild.id, prefix)
     await ctx.send(f"Prefix now set to {prefix}.")
 
 
 @config.command(help="Set Next Game default start time.", name="time")
-async def next_game_time(ctx, default_time: str, default_timezone: str):
+async def next_game_time(ctx: commands.Context, default_time: str, default_timezone: str) -> None:
     """Command to set the default start time in the next_game module.
 
     :param default_time: Time string
     :param default_timezone: Timezone string
     :param ctx: Discord context object
     """
-    timezones = {"ET": ET, "CT": CT, "MT": MT, "PT": PT}
     try:
         sch_hour, sch_minute = [int(i) for i in default_time.split(":")]
         if (sch_hour > 24) or (sch_minute > 59):
@@ -61,7 +62,7 @@ async def next_game_time(ctx, default_time: str, default_timezone: str):
         elif default_timezone.upper() not in ["ET", "CT", "MT", "PT"]:
             await ctx.send("Please indicate your timezone, ET, CT, MT, or PT.")
         else:
-            time_output = default_time + " " + default_timezone.upper()
+            time_output: str = default_time + " " + default_timezone.upper()
             soulbot_db.config_next_game_default_time_update(ctx.guild.id, time_output)
             await ctx.send(f"NextGameScheduler default game start time is now set to {time_output}.")
     except ValueError:
@@ -69,7 +70,7 @@ async def next_game_time(ctx, default_time: str, default_timezone: str):
 
 
 @config.command(help="Set Next Game default game interval in days.", name="interval")
-async def next_game_interval(ctx, default_interval: int):
+async def next_game_interval(ctx: commands.Context, default_interval: int) -> None:
     """Command to set the next_game module default interval.
 
     :param default_interval: Interval in days.
@@ -83,13 +84,13 @@ async def next_game_interval(ctx, default_interval: int):
     help="Configure the text channel to send the Next Game announcements to.  Default: general",
     name="announce",
 )
-async def next_game_announce_channel(ctx, channel_name: str):
+async def next_game_announce_channel(ctx: commands.Context, channel_name: str) -> None:
     """Command to set the channel Next Game announcements are sent to.
 
     :param ctx: Discord context object.
     :param channel_name: String name of channel.
     """
-    all_channels = []
+    all_channels: List[str] = []
     for channel in ctx.guild.text_channels:
         all_channels.append(channel.name)
     if channel_name in all_channels:
@@ -102,7 +103,7 @@ async def next_game_announce_channel(ctx, channel_name: str):
 @set_prefix.error
 @next_game_time.error
 @next_game_interval.error
-async def config_error(ctx, error):
+async def config_error(ctx: commands.Context, error: commands.CommandError) -> None:
     """Error catching for the config commands."""
     if isinstance(error, commands.BadArgument):
         await ctx.send("Please use numeric values only for the game interval.")
@@ -114,7 +115,7 @@ async def config_error(ctx, error):
 
 
 @bot.event
-async def on_command_error(ctx, error):
+async def on_command_error(ctx: commands.Context, error: commands.CommandError) -> None:
     """Catching errors if user tries running a command that doesn't exist."""
     if isinstance(error, commands.errors.CommandNotFound):
         await ctx.send(
@@ -123,7 +124,7 @@ async def on_command_error(ctx, error):
 
 
 @bot.event
-async def on_guild_join(guild):
+async def on_guild_join(guild: discord.Guild) -> None:
     soulbot_db.config_insert_all(
         guild.id,
         bot_config["command_prefix"],
@@ -134,26 +135,37 @@ async def on_guild_join(guild):
 
 
 @bot.event
-async def on_guild_remove(guild):
+async def on_guild_remove(guild: discord.Guild) -> None:
     soulbot_db.guild_remove_all(guild.id)
 
 
 @tasks.loop(minutes=5)
-async def game_announce():
+async def game_announce() -> None:
     """Discord task loop to check if the next game will start in the next 60 minutes."""
     announce_check = soulbot_db.next_game_get_all_announcing()
+
     for server in announce_check:
         guild = bot.get_guild(server[0])
-        channel = discord.utils.get(
-            guild.text_channels, name=soulbot_db.config_load_guild(guild.id)["announce_channel"]
-        )
-        next_game_scheduled = arrow.get(server[1])
+        if not guild:
+            continue
+
+        config = soulbot_db.config_load_guild(guild.id)
+        channel = discord.utils.get(guild.text_channels, name=config["announce_channel"])
+        if not channel:
+            continue
+
+        next_game_scheduled: arrow.Arrow = arrow.get(server[1])
         countdown = next_game_scheduled - arrow.utcnow()
-        if channel:
-            if countdown.seconds < 3600 and countdown.days == 0:
-                soulbot_db.next_game_announce_toggle(0, guild.id)
-                minutes, _ = divmod(countdown.seconds, 60)
-                await channel.send(f"@here Next game in {minutes} minutes!\nFurther announcements have been disabled.")
+
+        if countdown.seconds < 3600 and countdown.days == 0:
+            await _send_game_announcement(channel, countdown, guild.id)
+
+
+async def _send_game_announcement(channel: discord.TextChannel, countdown: timedelta, guild_id: int) -> None:
+    """Send game announcement message and disable further announcements."""
+    soulbot_db.next_game_announce_toggle(0, guild_id)
+    minutes, _ = divmod(countdown.seconds, 60)
+    await channel.send(f"@here Next game in {minutes} minutes!\nFurther announcements have been disabled.")
 
 
 # =========================================================
@@ -162,7 +174,7 @@ async def game_announce():
 
 
 @bot.event
-async def on_ready():
+async def on_ready() -> None:
     """Bot readiness indicator on the script console."""
     print(f"{bot.user.name} has connected to Discord.")
     try:
