@@ -36,10 +36,6 @@ class ChaosMageTracker:
     def __init__(self):
         self.mages = {}
 
-    def reset(self):
-        """Resets the dictionary for the enacting person to blank."""
-        self.mages = {}
-
     def refill(self, mage_name):
         """Refills the dictionary of an enacting person with the max number of entries."""
         self.mages[mage_name] = [
@@ -82,17 +78,20 @@ class ChaosMageCommands(discord.Cog, name="Chaos Mage Commands"):
     @chaos_main.command(help="Manually fills or refills a Chaos Mage's spell determination pool.")
     async def refill(self, ctx):
         """Command to refill the enacting user's pool."""
-        chaos_mages.refill(str(ctx.guild.id) + ctx.author.display_name)
+        mage_key = str(ctx.guild.id) + ctx.author.display_name
+        chaos_mages.refill(mage_key)
         logger.info(f"User {ctx.author} in guild {ctx.guild.name} refilled chaos mage pool")
         await ctx.send(f"{ctx.author.mention}'s spell determination pool has been refilled.")
 
     @chaos_main.command(help="Draw a random spell type from your spell determination pool.")
     async def draw(self, ctx):
         """Command to draw a spell type of the enacting user's pool."""
-        if str(ctx.guild.id) + ctx.author.display_name in chaos_mages.mages:
-            if len(chaos_mages.mages[str(ctx.guild.id) + ctx.author.display_name]) == 2:
-                spell_type = chaos_mages.draw(str(ctx.guild.id) + ctx.author.display_name)
-                chaos_mages.refill(str(ctx.guild.id) + ctx.author.display_name)
+        mage_key = str(ctx.guild.id) + ctx.author.display_name
+
+        if mage_key in chaos_mages.mages:
+            if len(chaos_mages.mages[mage_key]) == 2:
+                spell_type = chaos_mages.draw(mage_key)
+                chaos_mages.refill(mage_key)
                 logger.info(f"User {ctx.author} drew chaos spell (auto-refilled): {spell_type}")
                 await ctx.send(
                     f"{ctx.author.mention}, your next spell will be:"
@@ -101,25 +100,23 @@ class ChaosMageCommands(discord.Cog, name="Chaos Mage Commands"):
                     f"it has automatically been refilled."
                 )
             else:
-                await ctx.send(
-                    f"{ctx.author.mention}, your next spell will be:"
-                    f"\n{chaos_mages.draw(str(ctx.guild.id) + ctx.author.display_name)}"
-                )
+                spell_type = chaos_mages.draw(mage_key)
                 logger.info(f"User {ctx.author} drew chaos spell: {spell_type}")
+                await ctx.send(f"{ctx.author.mention}, your next spell will be:\n{spell_type}")
         else:
-            chaos_mages.refill(str(ctx.guild.id) + ctx.author.display_name)
+            chaos_mages.refill(mage_key)
+            spell_type = chaos_mages.draw(mage_key)
             logger.info(f"User {ctx.author} created new chaos mage pool and drew: {spell_type}")
             await ctx.send(
-                f"{ctx.author.mention}'s pool was empty and has been filled. "
-                f"Your next spell will be:"
-                f"\n{chaos_mages.draw(str(ctx.guild.id) + ctx.author.display_name)}"
+                f"{ctx.author.mention}'s pool was empty and has been filled. Your next spell will be:\n{spell_type}"
             )
 
     @chaos_main.command(help="Determine warp element if you have the Warp Talents.")
     async def warp(self, ctx):
         """Command calls warp_element function to return random element."""
-        await ctx.send(f"{ctx.author.mention}, your warp element is: **{warp_element()}**")
+        element = warp_element()
         logger.info(f"User {ctx.author} rolled warp element: {element}")
+        await ctx.send(f"{ctx.author.mention}, your warp element is: **{element}**")
 
 
 def setup(bot):
