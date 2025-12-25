@@ -3,10 +3,12 @@ aiohttp==3.13.2
 aiosignal==1.4.0
 arrow==1.4.0
 attrs==25.4.0
+audioop-lts==0.2.2
 certifi==2025.11.12
 charset-normalizer==3.4.4
 frozenlist==1.8.0
 idna==3.11
+loguru==0.7.3
 multidict==6.7.0
 numpy==2.3.5
 propcache==0.4.1
