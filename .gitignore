@@ -15,5 +15,5 @@ build/
 .ropeproject/
 data/*
 !data/decks
-
+logs/*
 *.conf
