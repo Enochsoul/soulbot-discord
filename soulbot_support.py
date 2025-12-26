@@ -7,8 +7,7 @@ import arrow
 from loguru import logger
 from sqlalchemy import Boolean, Column, Integer, String, Text, create_engine
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 # Timezone constants
 MT = arrow.now("US/Mountain").tzinfo
