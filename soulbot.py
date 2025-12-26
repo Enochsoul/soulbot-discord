@@ -2,6 +2,7 @@
 
 import json
 import pathlib
+import sys
 from datetime import timedelta
 from typing import Any, Dict, Union
 
@@ -20,6 +21,7 @@ ANNOUNCEMENT_THRESHOLD = 3600  # seconds (1 hour)
 LOG_LOCATION = pathlib.Path("logs/soulbot.log")
 
 # Setup Logging
+logger.remove()
 logger.add(LOG_LOCATION, rotation="1 MB", retention="30 days")
 
 
@@ -36,7 +38,7 @@ class SoulBot(commands.Bot):
 
         super().__init__(command_prefix=self._get_prefix, intents=intents)
 
-    def _get_prefix(self, bot: Union[commands.Bot, commands.AutoShardedBot], message: discord.Message) -> str:
+    def _get_prefix(self, bot: Union[commands.Bot, commands.AutoShardedBot], message: discord.Message) -> str | None:
         """Get the command prefix for a specific guild."""
         if not message.guild:
             return self.config["command_prefix"]
