@@ -13,7 +13,7 @@ build/
 .vscode/
 .zed/
 .ropeproject/
-data/*
+soulbot/data/*
 !data/decks
-logs/*
+soulbot/logs/*
 *.conf
