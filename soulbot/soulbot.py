@@ -2,7 +2,6 @@
 
 import json
 import pathlib
-import sys
 from datetime import timedelta
 from typing import Any, Dict, Union
 

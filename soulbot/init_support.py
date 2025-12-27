@@ -3,11 +3,10 @@
 from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import discord
-from discord.ext import commands
-from tabulate import tabulate
-
 from DiceRoller import die_roll
+from discord.ext import commands
 from soulbot_support import soulbot_db
+from tabulate import tabulate
 
 
 class InitiativeTrack:

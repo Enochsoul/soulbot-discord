@@ -5,10 +5,9 @@ import random
 from typing import Dict, List, Optional
 
 import discord
+from dice_support import Dice, InvalidDiceFormat, InvalidRollType
 from discord.ext import commands
 from loguru import logger
-
-from dice_support import Dice, InvalidDiceFormat, InvalidRollType
 
 die_roll: Dice = Dice()
 

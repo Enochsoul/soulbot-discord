@@ -2,7 +2,7 @@ import random
 import re
 from dataclasses import dataclass
 from itertools import chain
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional
 
 import numpy as np
 from scipy.stats import truncnorm

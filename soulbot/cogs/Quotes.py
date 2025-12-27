@@ -7,7 +7,6 @@ import discord
 import requests
 from discord.ext import commands
 from loguru import logger
-
 from soulbot_support import soulbot_db
 
 
