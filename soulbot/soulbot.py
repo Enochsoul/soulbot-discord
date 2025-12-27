@@ -10,7 +10,6 @@ import arrow
 import discord
 from discord.ext import commands, tasks
 from loguru import logger
-
 from soulbot_support import soulbot_db
 
 # Constants

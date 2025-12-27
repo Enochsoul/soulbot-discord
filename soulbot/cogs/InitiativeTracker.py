@@ -1,12 +1,12 @@
 """Cog for tracking Initiative and attack rolls."""
 
 import discord
+import init_support
 from discord.ext import commands
 from loguru import logger
-
-import init_support
-from soulbot import bot as init_bot
 from soulbot_support import soulbot_db
+
+from soulbot import bot as init_bot
 
 init_obj: dict[int, init_support.InitiativeTrack] = {}
 guild_list = soulbot_db.config_all_prefix_load()
@@ -248,6 +248,11 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
             await ctx.send(
                 f"Missing required arguments, please check **{ctx.prefix}help {ctx.invoked_with}** for command syntax."
             )
+        elif isinstance(error, commands.BadArgument):
+            logger.warning(f"BadArgument in {ctx.command}: {error}")
+            await ctx.send(
+                f"Invalid argument, please check **{ctx.prefix}help {ctx.invoked_with}** for command syntax."
+            )
         else:
             logger.error(f"Unknown error in {ctx.command}: {error}")
             print(f"Unknown error in {ctx.command}: {error}")
@@ -282,7 +287,7 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
     @attack.error
     @attack_npc.error
     @init_roll.error
-    async def cog_command_error(self, ctx: discord.ApplicationContext, error: Exception) -> None:
+    async def on_init_error(self, ctx: discord.ApplicationContext, error: Exception) -> None:
         if isinstance(error, commands.MissingRequiredArgument):
             logger.warning(f"Missing required argument in {ctx.command}: {error}")
             await ctx.send(f"Missing required argument. Use `{ctx.prefix}help {ctx.command}` for usage.")
