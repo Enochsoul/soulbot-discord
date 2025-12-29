@@ -1,0 +1,13 @@
+name: soulbot
+services:
+  soulbot:
+    build: .
+    volumes:
+      - discordbot:/app/soulbot/data
+      - discordbot:/app/soulbot/logs
+    container_name: soulbot
+    image: soulbot:latest
+volumes:
+  discordbot:
+    external: true
+    name: discordbot
