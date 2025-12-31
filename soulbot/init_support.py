@@ -93,7 +93,7 @@ def handle_start_logic(
 
 
 def handle_next_turn_logic(
-    guild_tracker: InitiativeTrack, ctx: commands.Context
+    guild_tracker: InitiativeTrack, ctx: commands.Context, update_database_func: Callable[[commands.Context, Any], None]
 ) -> Tuple[str, Optional[discord.Embed]]:
     """Handle the core logic for advancing to the next turn."""
     if not guild_tracker.tracker_active:
@@ -116,6 +116,9 @@ def handle_next_turn_logic(
         message = "Beginning next combat round."
     else:
         message = "Beginning next turn."
+
+    # Update database
+    update_database_func(ctx, guild_tracker)
 
     embed, table = guild_tracker.embed_template()
     return f"{message}\n{table}", embed
@@ -329,7 +332,9 @@ def handle_active_logic(
     return f"{name} is now the active combatant.\n{table}", embed
 
 
-def handle_rebuild_logic(guild_tracker: InitiativeTrack, ctx: commands.Context) -> Tuple[str, discord.Embed]:
+def handle_rebuild_logic(
+    guild_tracker: InitiativeTrack, ctx: commands.Context
+) -> Tuple[str, discord.Embed, InitiativeTrack]:
     """Handle the core logic for rebuilding the tracker from database."""
     # Reset the tracker
     guild_tracker.reset()
@@ -344,7 +349,7 @@ def handle_rebuild_logic(guild_tracker: InitiativeTrack, ctx: commands.Context) 
     # Generate response
     embed, table = guild_tracker.embed_template()
     message = f"Initiative tracker has been reset and rebuilt from the backup database.\n{table}"
-    return message, embed
+    return message, embed, guild_tracker
 
 
 def handle_attack_logic(

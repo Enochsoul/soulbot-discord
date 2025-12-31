@@ -8,6 +8,7 @@ from typing import Any, Dict, Union
 import arrow
 import discord
 from discord.ext import commands, tasks
+from init_support import InitiativeTrack
 from loguru import logger
 from soulbot_support import soulbot_db
 
@@ -26,8 +27,12 @@ logger.add(LOG_LOCATION, rotation="1 MB", retention="30 days")
 class SoulBot(commands.Bot):
     """Custom bot class for 13th Age RPG assistance."""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], guild_init: Dict | None = None):
         self.config = config
+        if guild_init is None:
+            self.guild_init = dict()
+        else:
+            self.guild_init = guild_init
 
         intents = discord.Intents.default()
         intents.members = True
