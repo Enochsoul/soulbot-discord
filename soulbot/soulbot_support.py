@@ -8,6 +8,7 @@ from loguru import logger
 from sqlalchemy import Boolean, Column, Integer, String, Text, create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
+from sqlalchemy.types import PickleType
 
 # Timezone constants
 MT = arrow.now("US/Mountain").tzinfo
@@ -48,8 +49,7 @@ class Initiative(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     guild_id = Column(Integer, nullable=False)
-    name = Column(String(255), nullable=False)
-    init = Column(Integer, nullable=False)
+    table = Column(PickleType, nullable=False)
 
 
 class Config(Base):
@@ -86,7 +86,7 @@ class DatabaseIO:
         """Get a database session."""
         return self.SessionLocal()
 
-    def init_db_add(self, init_insert: List[Tuple[int, str, int]]) -> None:
+    def init_db_add(self, guild_id: int, init_insert) -> None:
         """Insert/overwrite Initiative tracker data into the database.
 
         :param init_insert: List of tuples containing (guild_id, name, init) values.
@@ -95,16 +95,14 @@ class DatabaseIO:
             with self.get_session() as session:
                 # Clear existing records for the guild
                 if init_insert:
-                    guild_id = init_insert[0][0]
                     session.query(Initiative).filter(Initiative.guild_id == guild_id).delete()
 
-                # Add new records
-                for guild_id, name, init_value in init_insert:
-                    initiative = Initiative(guild_id=guild_id, name=name, init=init_value)
-                    session.add(initiative)
+                # Add new record
+                initiative = Initiative(guild_id=guild_id, table=init_insert)
+                session.add(initiative)
 
                 session.commit()
-                logger.debug(f"Added {len(init_insert)} initiative records")
+                logger.debug(f"Added {init_insert} initiative record.")
         except Exception as e:
             logger.error(f"Error adding initiative data: {e}")
             raise
@@ -123,7 +121,7 @@ class DatabaseIO:
             logger.error(f"Error resetting initiative data: {e}")
             raise
 
-    def init_db_rebuild(self, guild_id: int) -> List[Tuple[str, int]]:
+    def init_db_rebuild(self, guild_id: int):
         """Retrieve initiative table from the database to rebuild the bot data.
 
         :param guild_id: Discord guild ID.
@@ -131,9 +129,12 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                results = session.query(Initiative.name, Initiative.init).filter(Initiative.guild_id == guild_id).all()
-                logger.debug(f"Retrieved {len(results)} initiative records for guild {guild_id}")
-                return results
+                results = session.query(Initiative.table).filter(Initiative.guild_id == guild_id).first()
+                if results is not None:
+                    logger.debug(f"Retrieved initiative records for guild {guild_id}")
+                    return results.tuple()[0]
+                else:
+                    return results
         except Exception as e:
             logger.error(f"Error rebuilding initiative data: {e}")
             raise

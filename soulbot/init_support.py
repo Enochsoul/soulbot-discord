@@ -340,11 +340,8 @@ def handle_rebuild_logic(
     guild_tracker.reset()
 
     # Rebuild from database
-    all_rows = soulbot_db.init_db_rebuild(ctx.guild.id)
-    if all_rows:
-        guild_tracker.combatant_dict = {row[0]: row[1] for row in all_rows}
-        guild_tracker.turn = ["    " for _ in range(len(guild_tracker.combatant_dict))]
-        guild_tracker.build_init_table()
+    guild_tracker = soulbot_db.init_db_rebuild(ctx.guild.id)
+    guild_tracker.build_init_table()
 
     # Generate response
     embed, table = guild_tracker.embed_template()
