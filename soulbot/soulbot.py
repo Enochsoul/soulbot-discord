@@ -215,9 +215,8 @@ def load_config() -> Dict[str, Any]:
         raise
 
 
-def setup_bot() -> SoulBot:
+def setup_bot(config: Dict[str, Any]) -> SoulBot:
     """Initialize and configure the bot."""
-    config = load_config()
     bot = SoulBot(config)
 
     # Add event handlers
@@ -240,12 +239,14 @@ def setup_bot() -> SoulBot:
             config["next_game_interval"],
             config["announce_channel"],
         )
+        bot.guild_init[guild.id] = InitiativeTrack()
         logger.info(f"Joined guild: {guild.name} ({guild.id})")
 
     @bot.event
     async def on_guild_remove(guild: discord.Guild) -> None:
         """Handle bot being removed from a guild."""
         soulbot_db.guild_remove_all(guild.id)
+        _ = bot.guild_init.pop(guild.id)
         logger.info(f"Left guild: {guild.name} ({guild.id})")
 
     @bot.event
@@ -258,10 +259,12 @@ def setup_bot() -> SoulBot:
         if not announcer.game_announce_task.is_running():
             announcer.game_announce_task.start()
 
+        bot.guild_init = {k: InitiativeTrack() for k in soulbot_db.config_all_prefix_load()}
+
     return bot
 
 
-def load_extensions(bot: SoulBot, config: Dict[str, Any]) -> None:
+def load_extensions(bot: SoulBot) -> None:
     """Load bot extensions and cogs."""
     # Load DiceRoller extension
     try:
@@ -271,7 +274,7 @@ def load_extensions(bot: SoulBot, config: Dict[str, Any]) -> None:
         logger.error(f"Failed to load DiceRoller: {e}")
 
     # Load configured cogs
-    for cog in config.get("load_cogs", []):
+    for cog in bot.config.get("load_cogs", []):
         try:
             bot.load_extension(f"cogs.{cog}")
         except discord.ExtensionNotLoaded as e:
@@ -284,16 +287,16 @@ def load_extensions(bot: SoulBot, config: Dict[str, Any]) -> None:
 
 # Initialize components
 bot_config = load_config()
-bot = setup_bot()
+bot = setup_bot(bot_config)
 announcer = GameAnnouncer(bot)
 
 # Add cogs
 bot.add_cog(ConfigCommands(bot))
 
 if __name__ == "__main__":
-    load_extensions(bot, bot_config)
+    load_extensions(bot)
 
     try:
-        bot.run(bot_config["discord_token"])
+        bot.run(bot.config["discord_token"])
     except Exception as e:
         logger.error(f"Bot startup error: {e}")
