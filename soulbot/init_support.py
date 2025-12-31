@@ -1,11 +1,10 @@
 """Support functions for Initiative Tracker async function capabilities."""
 
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Tuple, Union
 
 import discord
 from DiceRoller import die_roll
 from discord.ext import commands
-from soulbot_support import soulbot_db
 from tabulate import tabulate
 
 
@@ -330,23 +329,6 @@ def handle_active_logic(
     # Generate response
     embed, table = guild_tracker.embed_template()
     return f"{name} is now the active combatant.\n{table}", embed
-
-
-def handle_rebuild_logic(
-    guild_tracker: InitiativeTrack, ctx: commands.Context
-) -> Tuple[str, discord.Embed, InitiativeTrack]:
-    """Handle the core logic for rebuilding the tracker from database."""
-    # Reset the tracker
-    guild_tracker.reset()
-
-    # Rebuild from database
-    guild_tracker = soulbot_db.init_db_rebuild(ctx.guild.id)
-    guild_tracker.build_init_table()
-
-    # Generate response
-    embed, table = guild_tracker.embed_template()
-    message = f"Initiative tracker has been reset and rebuilt from the backup database.\n{table}"
-    return message, embed, guild_tracker
 
 
 def handle_attack_logic(
