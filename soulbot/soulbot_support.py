@@ -29,7 +29,7 @@ class NextGame(Base):
     guild_id = Column(Integer, primary_key=True)
     created_date = Column(Integer, nullable=False)
     next_date = Column(Integer, nullable=False)
-    announce_on = Column(Boolean, default=False, nullable=False)
+    announce_on = Column(Boolean, default=True, nullable=False)
 
 
 class Quote(Base):
