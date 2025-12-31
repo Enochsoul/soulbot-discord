@@ -146,6 +146,7 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
         # Update escalation die with bounds checking
         old_value = guild_tracker.escalation
         guild_tracker.escalation = max(0, min(6, guild_tracker.escalation + value_change))
+        self._update_database(ctx, guild_tracker)
         logger.info(f"DM {ctx.author} changed escalation die from {old_value} to {guild_tracker.escalation}")
         await ctx.send(f"Escalation die is now {guild_tracker.escalation}")
 
