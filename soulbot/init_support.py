@@ -353,7 +353,7 @@ def handle_rebuild_logic(
 
 
 def handle_attack_logic(
-    ctx: commands.Context, bonus: int, roll_type: str, init_obj: Dict[int, Any]
+    ctx: commands.Context, bonus: int, roll_type: str, guild_tracker: InitiativeTrack
 ) -> Tuple[str, Optional[discord.Embed]]:
     """Handle the core logic for player attack rolls."""
     # Valid roll types mapping
@@ -365,7 +365,7 @@ def handle_attack_logic(
 
     # Roll the dice
     attack_natural = die_roll.roll(valid_roll_types[roll_type]).total
-    escalation = init_obj[ctx.guild.id].escalation
+    escalation = guild_tracker.escalation
     attack_modified = attack_natural + bonus + escalation
 
     # Determine crit status

@@ -238,7 +238,7 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
     )
     async def attack(self, ctx: commands.Context, bonus: int = 0, roll_type: str = "d") -> None:
         """Roll an attack with the specified bonus and roll type."""
-        message, embed = init_support.handle_attack_logic(ctx, bonus, roll_type, init_obj)
+        message, embed = init_support.handle_attack_logic(ctx, bonus, roll_type, self.bot.guild_init[ctx.guild.id])
         logger.info(f"User {ctx.author} rolled attack with bonus {bonus}, roll type {roll_type}")
         if embed:
             await ctx.send(message, embed=embed)
@@ -277,7 +277,7 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
             await ctx.send(f"Error Encountered:\n{error}")
 
 
-def setup(bot: commands.Bot) -> None:
+def setup(bot) -> None:
     """Discord module required setup for Cog loading."""
     logger.info("Loading InitiativeTracker cog")
     bot.add_cog(InitiativeTracker(bot))
