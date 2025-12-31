@@ -203,22 +203,9 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
         else:
             await ctx.send(message, embed=embed)
 
-    @dm_group.command(
-        help="DON'T DO THIS UNLESS YOU MEAN IT. "
-        "Rebuild the init tracker from the backup database.  "
-        "Deactivates and resets the tracker, and resets the escalation die."
-    )
-    async def rebuild(self, ctx: commands.Context) -> None:
-        guild_tracker = init_obj[ctx.guild.id]
-
-        message, embed = init_support.handle_rebuild_logic(guild_tracker, ctx)
-        logger.warning(f"DM {ctx.author} rebuilt initiative tracker from database")
-        await ctx.send(message, embed=embed)
-
     @dm_group.error
     @npc.error
     @update.error
-    @rebuild.error
     async def on_dm_error(self, ctx: commands.Context, error: commands.CommandError) -> None:
         """Handle errors for DM-specific commands."""
         if isinstance(error, commands.MissingRole):
