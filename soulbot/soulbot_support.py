@@ -1,5 +1,6 @@
 """Module containing support command for the main bot using SQLAlchemy ORM."""
 
+import pathlib
 import random
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -67,7 +68,7 @@ class Config(Base):
 class DatabaseIO:
     """Class definition to contain all interactions with the SQLAlchemy database."""
 
-    def __init__(self, database_url: str = "sqlite:///data/discordbot.sql"):
+    def __init__(self, database_url: str):
         """Initialize database connection and create tables."""
         self.engine = create_engine(
             database_url,
@@ -465,4 +466,6 @@ class DatabaseIO:
 
 
 # Initialize the database instance
-soulbot_db = DatabaseIO()
+db_file_path = str(pathlib.Path(__file__).parent.resolve()) + "/data/discordbot.sql"
+logger.info(f"Setting up database at: {db_file_path}")
+soulbot_db = DatabaseIO(f"sqlite:///{db_file_path}")
