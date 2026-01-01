@@ -264,11 +264,14 @@ def setup_bot(config: Dict[str, Any]) -> SoulBot:
         if not announcer.game_announce_task.is_running():
             announcer.game_announce_task.start()
 
+        # Restore initiative trackers for all registered guilds if they exist.
         guild_list = soulbot_db.config_all_prefix_load().keys()
-        bot.guild_init = {
-            k: (InitiativeTrack() if soulbot_db.init_db_rebuild(k) is None else soulbot_db.init_db_rebuild(k))
-            for k in guild_list
-        }
+        for guild in guild_list:
+            init_tracker = soulbot_db.init_db_rebuild(guild)
+            if init_tracker is None:
+                bot.guild_init[guild] = InitiativeTrack()
+            else:
+                bot.guild_init[guild] = init_tracker
 
     return bot
 
