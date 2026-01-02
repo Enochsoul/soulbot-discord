@@ -8,8 +8,6 @@ from discord.ext import commands
 from loguru import logger
 from tabulate import tabulate
 
-from soulbot import bot_config
-
 
 class CogAdmin(discord.Cog, name="Cog Admin"):
     """Class definition for administrating Cogs, inherits from discord extension Cog class."""
@@ -36,7 +34,7 @@ class CogAdmin(discord.Cog, name="Cog Admin"):
                 loaded = False
             else:
                 loaded = True
-            if cog in bot_config["load_cogs"]:
+            if cog in self.bot.config["load_cogs"]:
                 startup = True
             else:
                 startup = False
@@ -126,13 +124,13 @@ class CogAdmin(discord.Cog, name="Cog Admin"):
         :return: Success or Fail message to the channel.
         """
         cogs_list = [cog.split(".")[0] for cog in os.listdir("cogs") if ".py" in cog]
-        if cog not in bot_config["load_cogs"]:
+        if cog not in self.bot.config["load_cogs"]:
             if cog in cogs_list:
                 # Update running config.
-                bot_config["load_cogs"].append(cog)
+                self.bot.config["load_cogs"].append(cog)
                 # Write running config out to disk.
                 with open("soulbot.conf", "w") as outfile:
-                    json.dump(bot_config, outfile)
+                    json.dump(self.bot.config, outfile)
                 logger.info(f"User {ctx.author} added cog {cog} to startup list")
                 await ctx.send(f"{cog} added to startup list.")
             else:
@@ -151,11 +149,11 @@ class CogAdmin(discord.Cog, name="Cog Admin"):
         :return: Success or Fail message to the channel.
         """
         cogs_list = [cog.split(".")[0] for cog in os.listdir("cogs") if ".py" in cog]
-        if cog in bot_config["load_cogs"]:
+        if cog in self.bot.config["load_cogs"]:
             if cog in cogs_list:
-                bot_config["load_cogs"].remove(cog)
+                self.bot.config["load_cogs"].remove(cog)
                 with open("soulbot.conf", "w") as outfile:
-                    json.dump(bot_config, outfile)
+                    json.dump(self.bot.config, outfile)
                 logger.info(f"User {ctx.author} removed cog {cog} from startup list")
                 await ctx.send(f"{cog} removed from the startup list.")
             else:
