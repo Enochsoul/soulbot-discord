@@ -99,7 +99,7 @@ class DiceRoller(discord.Cog, name="Dice Roller"):
         await ctx.send(f"Deck list has been refreshed.  Use **{ctx.prefix}deck list** to see all available card decks.")
 
     @roll.error
-    async def cog_command_error(self, ctx: discord.ApplicationContext, error: Exception) -> None:
+    async def on_cog_error(self, ctx: commands.Context, error: commands.CommandError) -> None:
         logger.error(f"DiceRoller command error: {error}")
         print(error)
 

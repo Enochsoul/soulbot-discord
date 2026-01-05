@@ -190,7 +190,7 @@ class NextGameScheduler(discord.Cog, name="Next Game Scheduler"):
 
     @set_date.error
     @set_time.error
-    async def next_game_error(self, ctx, error):
+    async def next_game_error(self, ctx: commands.Context, error: commands.CommandError):
         """Error catching for the cog."""
         if isinstance(error, commands.MissingRequiredArgument):
             logger.warning(f"Missing required argument in {ctx.command}: {error}")

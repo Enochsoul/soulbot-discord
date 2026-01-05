@@ -261,7 +261,7 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
     @attack.error
     @attack_npc.error
     @init_roll.error
-    async def on_init_error(self, ctx: discord.ApplicationContext, error: Exception) -> None:
+    async def on_init_error(self, ctx: commands.Context, error: commands.CommandError) -> None:
         if isinstance(error, commands.MissingRequiredArgument):
             logger.warning(f"Missing required argument in {ctx.command}: {error}")
             await ctx.send(f"Missing required argument. Use `{ctx.prefix}help {ctx.command}` for usage.")
