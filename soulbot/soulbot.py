@@ -164,6 +164,8 @@ class GameAnnouncer:
             for server_data in announce_check:
                 await self._process_server_announcement(server_data)
 
+        except commands.ChannelNotFound as e:
+            logger.warning(str(e))
         except Exception as e:
             logger.error(f"Error in game announcement task: {e}")
 
@@ -178,8 +180,9 @@ class GameAnnouncer:
         config = soulbot_db.next_game_get_defaults(guild.id)
         channel = discord.utils.get(guild.text_channels, name=config.announce_channel)
         if not channel:
-            logger.warning(f"Announcement channel not found for guild {guild.id}")
-            return
+            error_msg = f"Announcement channel not found for guild {guild.id}"
+            logger.warning(error_msg)
+            raise commands.ChannelNotFound(error_msg)
 
         next_game_scheduled = arrow.get(server_data.next_date)
         countdown = next_game_scheduled - arrow.utcnow()
