@@ -433,31 +433,6 @@ class DatabaseIO:
             logger.error(f"Error updating announce channel: {e}")
             raise
 
-    # def config_load_guild(self, guild_id: int) -> Optional[Dict[str, Any]]:
-    #     """Pull the saved config for the supplied guild_id.
-
-    #     :param guild_id: Discord guild ID.
-    #     :return: Dictionary of configuration values or None.
-    #     """
-    #     try:
-    #         with self.get_session() as session:
-    #             select_stmt = select(Config).where(Config.guild_id == guild_id)
-    #             config = session.execute(select_stmt).scalar_one_or_none()
-    #             if config:
-    #                 result = {
-    #                     "guild_id": config.guild_id,
-    #                     "prefix": config.prefix,
-    #                     "next_game_start": config.next_game_start,
-    #                     "next_game_interval": config.next_game_interval,
-    #                     "announce_channel": config.announce_channel,
-    #                 }
-    #                 logger.debug(f"Loaded config for guild {guild_id}")
-    #                 return result
-    #             return None
-    #     except Exception as e:
-    #         logger.error(f"Error loading guild config: {e}")
-    #         return None
-
     def guild_remove_all(self, guild_id: int) -> None:
         """Function called when bot is removed from guild, cleans up all DB references.
 
