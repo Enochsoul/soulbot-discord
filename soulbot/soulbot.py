@@ -33,6 +33,7 @@ class SoulBot(commands.Bot):
             self.guild_init = dict()
         else:
             self.guild_init = guild_init
+        self.prefixes = soulbot_db.config_all_prefix_load()
 
         intents = discord.Intents.default()
         intents.members = True
@@ -41,13 +42,12 @@ class SoulBot(commands.Bot):
 
         super().__init__(command_prefix=self._get_prefix, intents=intents)
 
-    def _get_prefix(self, bot: Union[commands.Bot, commands.AutoShardedBot], message: discord.Message) -> str | None:
+    def _get_prefix(self, bot: Union[commands.Bot, commands.AutoShardedBot], message: discord.Message) -> str:
         """Get the command prefix for a specific guild."""
-        if not message.guild:
+        if message.guild:
+            return self.prefixes[message.guild.id]
+        else:
             return self.config["command_prefix"]
-
-        prefixes = soulbot_db.config_all_prefix_load()
-        return prefixes.get(message.guild.id, self.config["command_prefix"])
 
 
 class ConfigCommands(commands.Cog):
@@ -70,6 +70,7 @@ class ConfigCommands(commands.Cog):
             await ctx.send("This command can only be used in a guild.")
             return
 
+        self.bot.prefixes[ctx.guild.id] = prefix
         soulbot_db.config_prefix_update(ctx.guild.id, prefix)
         await ctx.send(f"Prefix now set to {prefix}.")
 
@@ -243,6 +244,7 @@ def setup_bot(config: Dict[str, Any]) -> SoulBot:
             config["next_game_interval"],
             config["announce_channel"],
         )
+        bot.prefixes = soulbot_db.config_all_prefix_load()
         bot.guild_init[guild.id] = InitiativeTrack()
         logger.info(f"Joined guild: {guild.name} ({guild.id})")
 
@@ -251,6 +253,7 @@ def setup_bot(config: Dict[str, Any]) -> SoulBot:
         """Handle bot being removed from a guild."""
         soulbot_db.guild_remove_all(guild.id)
         _ = bot.guild_init.pop(guild.id)
+        _ = bot.prefixes.pop(guild.id)
         logger.info(f"Left guild: {guild.name} ({guild.id})")
 
     @bot.event
@@ -264,7 +267,7 @@ def setup_bot(config: Dict[str, Any]) -> SoulBot:
             announcer.game_announce_task.start()
 
         # Restore initiative trackers for all registered guilds if they exist.
-        guild_list = soulbot_db.config_all_prefix_load().keys()
+        guild_list = bot.prefixes.keys()
         for guild in guild_list:
             init_tracker = soulbot_db.init_db_rebuild(guild)
             if init_tracker is None:
