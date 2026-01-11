@@ -50,12 +50,12 @@ class NextGameScheduler(discord.Cog, name="Next Game Scheduler"):
     async def next_game(self, ctx):
         """Base level cog group command."""
         if ctx.invoked_subcommand is None:
-            next_game_scheduled = soulbot_db.next_game_db_get(ctx.guild.id)
+            next_game_scheduled = soulbot_db.next_game_db_get_date(ctx.guild.id)
             if not next_game_scheduled:
                 logger.info(f"User {ctx.author} requested next game but none scheduled in {ctx.guild.name}")
                 await ctx.send("The next game hasn't been scheduled yet.")
             else:
-                next_game_embed = next_game_embed_template(arrow.get(next_game_scheduled[0]))
+                next_game_embed = next_game_embed_template(arrow.get(next_game_scheduled))
                 logger.info(f"User {ctx.author} requested next game info in {ctx.guild.name}")
                 await ctx.send(embed=next_game_embed)
 
@@ -64,7 +64,7 @@ class NextGameScheduler(discord.Cog, name="Next Game Scheduler"):
         """Schedule sub-command group."""
         if ctx.invoked_subcommand is None:
             await ctx.send(
-                f"Additional arguments requires, see **{ctx.prefix}help next schedule** for available options."
+                f"Additional arguments required, see **{ctx.prefix}help next schedule** for available options."
             )
 
     @schedule.command(help="Sets the default date/time for the next game. Same bat time, 14 days from today.")
@@ -73,14 +73,18 @@ class NextGameScheduler(discord.Cog, name="Next Game Scheduler"):
         Default: 13:00MT 14 days from date command is run.
         """
         timezones = {"ET": ET, "CT": CT, "MT": MT, "PT": PT}
-        default_time_tz, default_interval = soulbot_db.next_game_get_defaults(ctx.guild.id)
-        def_time, def_tz = default_time_tz.split()
+        guild_config = soulbot_db.next_game_get_defaults(ctx.guild.id)
+        if not guild_config:
+            logger.error(f"Error with guild config for {ctx.guild.id}.")
+            await ctx.send("There was an error fetching the guild config, please check the logs.")
+            return
+        def_time, def_tz = guild_config.next_game_start.split()
         def_hour, def_minute = [int(i) for i in def_time.split(":")]
         def_timezone = timezones[def_tz.upper()]
         default_date = (
             arrow.now(def_timezone)
             .replace(hour=def_hour, minute=def_minute, second=0, microsecond=0)
-            .shift(days=default_interval)
+            .shift(days=guild_config.next_game_interval)
         )
         soulbot_db.next_game_db_add(default_date.to(UTC).int_timestamp, ctx.guild.id)
         next_game_embed = next_game_embed_template(default_date.to(UTC))
@@ -108,8 +112,12 @@ class NextGameScheduler(discord.Cog, name="Next Game Scheduler"):
                 await ctx.send("Please use the format: DD/MM/YYYY(EG: 31/05/2020)")
             else:
                 timezones = {"ET": ET, "CT": CT, "MT": MT, "PT": PT}
-                default_time_tz, _ = soulbot_db.next_game_get_defaults(ctx.guild.id)
-                def_time, def_tz = default_time_tz.split()
+                guild_config = soulbot_db.next_game_get_defaults(ctx.guild.id)
+                if not guild_config:
+                    logger.error(f"Error with guild config for {ctx.guild.id}.")
+                    await ctx.send("There was an error fetching the guild config, please check the logs.")
+                    return
+                def_time, def_tz = guild_config.next_game_start.split()
                 def_hour, def_minute = [int(i) for i in def_time.split(":")]
                 def_timezone = timezones[def_tz.upper()]
                 output_date = arrow.Arrow(sch_year, sch_month, sch_day, def_hour, def_minute, 0, 0, def_timezone)
@@ -147,7 +155,7 @@ class NextGameScheduler(discord.Cog, name="Next Game Scheduler"):
                 await ctx.send("Please indicate your timezone, ET, CT, MT, or PT.")
             else:
                 time_zone = timezones[schedule_tz.upper()]
-                next_game_scheduled = arrow.get(soulbot_db.next_game_db_get(ctx.guild.id)[0])
+                next_game_scheduled = arrow.get(soulbot_db.next_game_db_get_date(ctx.guild.id))
                 output_date = next_game_scheduled.to(time_zone).replace(
                     hour=sch_hour, minute=sch_minute, microsecond=0, second=0
                 )
@@ -161,6 +169,11 @@ class NextGameScheduler(discord.Cog, name="Next Game Scheduler"):
         except ValueError:
             logger.warning(f"User {ctx.author} provided invalid time format: {schedule_time}")
             await ctx.send("Please use 24 hour time in the format: HH:MM TZ(Eg: 19:00 ET)")
+        except TypeError:
+            logger.error(f"User {ctx.author} tried to set time with no date set.")
+            await ctx.send(
+                f"No game date set, please use {ctx.prefix}next schedule date or {ctx.prefix}next default to set the date first."
+            )
 
     @next_game.command(help="Toggles next game announcements.  Options are 'on' or 'off.")
     async def announce(self, ctx, toggle: str = ""):
@@ -169,20 +182,17 @@ class NextGameScheduler(discord.Cog, name="Next Game Scheduler"):
         :param toggle: 'On' or 'Off' string
         :param ctx: Discord context object
         """
-        announce_state = soulbot_db.next_game_db_get(ctx.guild.id)[1]
+        announce_state = soulbot_db.next_game_db_get_announce(ctx.guild.id)
+        state = "active" if announce_state else "not active"
         if not toggle:
-            status = "active" if announce_state else "not active"
-            logger.info(f"User {ctx.author} checked announcement status in {ctx.guild.name}: {status}")
-            if announce_state:
-                await ctx.send("Game announcements are active.")
-            else:
-                await ctx.send("Game announcements are not active.")
+            logger.info(f"User {ctx.author} checked announcement status in {ctx.guild.name}: {announce_state}")
+            await ctx.send(f"Game announcements are {state}.")
         elif toggle.lower() == "off":
-            soulbot_db.next_game_announce_toggle(0, ctx.guild.id)
+            soulbot_db.next_game_announce_toggle(False, ctx.guild.id)
             logger.info(f"User {ctx.author} disabled game announcements in {ctx.guild.name}")
             await ctx.send("Disabling next game announcements.")
         elif toggle.lower() == "on":
-            soulbot_db.next_game_announce_toggle(1, ctx.guild.id)
+            soulbot_db.next_game_announce_toggle(True, ctx.guild.id)
             logger.info(f"User {ctx.author} enabled game announcements in {ctx.guild.name}")
             await ctx.send("Enabling next game announcements.")
         else:
