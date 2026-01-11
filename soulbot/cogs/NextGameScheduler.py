@@ -174,6 +174,9 @@ class NextGameScheduler(discord.Cog, name="Next Game Scheduler"):
             await ctx.send(
                 f"No game date set, please use {ctx.prefix}next schedule date or {ctx.prefix}next default to set the date first."
             )
+        except RuntimeError as e:
+            logger.error(str(e))
+            await ctx.send(str(e))
 
     @next_game.command(help="Toggles next game announcements.  Options are 'on' or 'off.")
     async def announce(self, ctx, toggle: str = ""):

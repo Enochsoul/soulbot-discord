@@ -5,6 +5,7 @@ import random
 from typing import Dict, Optional, Sequence
 
 import arrow
+import sqlalchemy
 from loguru import logger
 from sqlalchemy import Boolean, Integer, String, Text, create_engine, delete, select
 from sqlalchemy.exc import IntegrityError
@@ -203,7 +204,7 @@ class DatabaseIO:
             logger.error(f"Error getting random quote: {e}")
             return "No quotes in the database."
 
-    def next_game_db_get_date(self, guild_id: int) -> Optional[int]:
+    def next_game_db_get_date(self, guild_id: int) -> int:
         """Pull Next Game date from the database.
 
         :param guild_id: Discord guild ID.
@@ -214,10 +215,14 @@ class DatabaseIO:
                 select_stmt = select(NextGame.next_date).where(NextGame.guild_id == guild_id)
                 result = session.execute(select_stmt).scalar()
                 logger.debug(f"Retrieved next game data for guild {guild_id}")
-                return result
+                if result:
+                    return result
+                else:
+                    raise RuntimeError("Error: No next game date found for guild.")
         except Exception as e:
-            logger.error(f"Error getting next game date: {e}")
-            return None
+            error_msg = f"Error getting next game date: {e}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
     def next_game_db_get_announce(self, guild_id: int) -> Optional[bool]:
         """Pull Next Game announce state from the database.
