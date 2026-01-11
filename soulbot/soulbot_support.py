@@ -2,13 +2,13 @@
 
 import pathlib
 import random
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, Optional, Sequence
 
 import arrow
 from loguru import logger
-from sqlalchemy import Boolean, Column, Integer, String, Text, create_engine
+from sqlalchemy import Boolean, Integer, String, Text, create_engine, delete, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, declarative_base, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 from sqlalchemy.types import PickleType
 
 # Timezone constants
@@ -18,8 +18,10 @@ CT = arrow.now("US/Central").tzinfo
 ET = arrow.now("US/Eastern").tzinfo
 UTC = arrow.utcnow().tzinfo
 
+
 # SQLAlchemy setup
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 
 class NextGame(Base):
@@ -27,10 +29,10 @@ class NextGame(Base):
 
     __tablename__ = "next_game"
 
-    guild_id = Column(Integer, primary_key=True)
-    created_date = Column(Integer, nullable=False)
-    next_date = Column(Integer, nullable=False)
-    announce_on = Column(Boolean, default=True, nullable=False)
+    guild_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    created_date: Mapped[int] = mapped_column(Integer, nullable=False)
+    next_date: Mapped[int] = mapped_column(Integer, nullable=False)
+    announce_on: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
 
 class Quote(Base):
@@ -38,9 +40,9 @@ class Quote(Base):
 
     __tablename__ = "quotes"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    guild_id = Column(Integer, nullable=False)
-    quote = Column(Text, nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    guild_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    quote: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 class Initiative(Base):
@@ -48,9 +50,9 @@ class Initiative(Base):
 
     __tablename__ = "initiative"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    guild_id = Column(Integer, nullable=False)
-    table = Column(PickleType, nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    guild_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    table: Mapped[PickleType] = mapped_column(PickleType, nullable=False)
 
 
 class Config(Base):
@@ -58,11 +60,11 @@ class Config(Base):
 
     __tablename__ = "config"
 
-    guild_id = Column(Integer, primary_key=True)
-    prefix = Column(String(10), nullable=False)
-    next_game_start = Column(String(20), nullable=False)
-    next_game_interval = Column(Integer, nullable=False)
-    announce_channel = Column(String(255), nullable=False)
+    guild_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    prefix: Mapped[str] = mapped_column(String(10), nullable=False)
+    next_game_start: Mapped[str] = mapped_column(String(20), nullable=False)
+    next_game_interval: Mapped[int] = mapped_column(Integer, nullable=False)
+    announce_channel: Mapped[str] = mapped_column(String(255), nullable=False)
 
 
 class DatabaseIO:
@@ -96,7 +98,7 @@ class DatabaseIO:
             with self.get_session() as session:
                 # Clear existing records for the guild
                 if init_insert:
-                    session.query(Initiative).filter(Initiative.guild_id == guild_id).delete()
+                    session.execute(delete(Initiative).where(Initiative.guild_id == guild_id))
 
                 # Add new record
                 initiative = Initiative(guild_id=guild_id, table=init_insert)
@@ -115,9 +117,9 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                deleted = session.query(Initiative).filter(Initiative.guild_id == guild_id).delete()
+                session.execute(delete(Initiative).where(Initiative.guild_id == guild_id))
                 session.commit()
-                logger.debug(f"Reset initiative for guild {guild_id}, deleted {deleted} records")
+                logger.debug(f"Reset initiative for guild {guild_id}.")
         except Exception as e:
             logger.error(f"Error resetting initiative data: {e}")
             raise
@@ -130,12 +132,10 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                results = session.query(Initiative.table).filter(Initiative.guild_id == guild_id).first()
-                if results is not None:
-                    logger.debug(f"Retrieved initiative records for guild {guild_id}")
-                    return results.tuple()[0]
-                else:
-                    return results
+                select_stmt = select(Initiative.table).where(Initiative.guild_id == guild_id)
+                results = session.execute(select_stmt).scalar_one_or_none()
+                logger.debug(f"Retrieved initiative records for guild {guild_id}")
+                return results
         except Exception as e:
             logger.error(f"Error rebuilding initiative data: {e}")
             raise
@@ -165,15 +165,12 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                quotes = (
-                    session.query(Quote.quote)
-                    .filter(Quote.guild_id == guild_id)
-                    .filter(Quote.quote.contains(quote_search))
-                    .all()
+                select_stmt = (
+                    select(Quote.quote).where(Quote.guild_id == guild_id).where(Quote.quote.contains(quote_search))
                 )
-
+                quotes = session.execute(select_stmt).scalars().all()
                 if quotes:
-                    random_quote = random.choice(quotes)[0]
+                    random_quote = random.choice(quotes)
                     logger.debug(f"Found quote containing '{quote_search}' for guild {guild_id}")
                     return f'QUOTE: "{random_quote}"'
                 else:
@@ -191,12 +188,14 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                # Get random quote using ORDER BY RANDOM()
-                quote = session.query(Quote.quote).filter(Quote.guild_id == guild_id).order_by("RANDOM()").first()
+                # Get all quotes.
+                select_stmt = select(Quote.quote).where(Quote.guild_id == guild_id)
+                quotes = session.execute(select_stmt).scalars().all()
 
-                if quote:
+                if quotes:
+                    quote = random.choice(quotes)
                     logger.debug(f"Retrieved random quote for guild {guild_id}")
-                    return f'QUOTE: "{quote[0]}"'
+                    return f'QUOTE: "{quote}"'
                 else:
                     logger.debug(f"No quotes available for guild {guild_id}")
                     return "No quotes in the database."
@@ -204,23 +203,36 @@ class DatabaseIO:
             logger.error(f"Error getting random quote: {e}")
             return "No quotes in the database."
 
-    def next_game_db_get(self, guild_id: int) -> Optional[Tuple[int, bool]]:
+    def next_game_db_get_date(self, guild_id: int) -> Optional[int]:
         """Pull Next Game date from the database.
 
         :param guild_id: Discord guild ID.
-        :return: Tuple of (next_date, announce_on) or None.
+        :return: Next Date in seconds from epoch.
         """
         try:
             with self.get_session() as session:
-                result = (
-                    session.query(NextGame.next_date, NextGame.announce_on)
-                    .filter(NextGame.guild_id == guild_id)
-                    .first()
-                )
+                select_stmt = select(NextGame.next_date).where(NextGame.guild_id == guild_id)
+                result = session.execute(select_stmt).scalar()
                 logger.debug(f"Retrieved next game data for guild {guild_id}")
                 return result
         except Exception as e:
-            logger.error(f"Error getting next game data: {e}")
+            logger.error(f"Error getting next game date: {e}")
+            return None
+
+    def next_game_db_get_announce(self, guild_id: int) -> Optional[bool]:
+        """Pull Next Game announce state from the database.
+
+        :param guild_id: Discord guild ID.
+        :return: boolean or None
+        """
+        try:
+            with self.get_session() as session:
+                select_stmt = select(NextGame.announce_on).where(NextGame.guild_id == guild_id)
+                result = session.execute(select_stmt).scalar()
+                logger.debug(f"Retrieved next game data for guild {guild_id}")
+                return result
+        except Exception as e:
+            logger.error(f"Error getting next game date: {e}")
             return None
 
     def next_game_db_add(self, output_date: int, guild_id: int) -> None:
@@ -232,21 +244,17 @@ class DatabaseIO:
         try:
             with self.get_session() as session:
                 # Try to update existing record
-                existing: NextGame = session.query(NextGame).filter(NextGame.guild_id == guild_id).first()
+                select_stmt = select(NextGame).where(NextGame.guild_id == guild_id)
+                existing = session.execute(select_stmt).scalar()
 
                 if existing:
-                    existing.next_date = output_date
-                    existing.created_date = arrow.now(UTC).int_timestamp
-                    existing.announce_on = False  # Reset announcements when date changes
-                else:
-                    # Create new record
-                    next_game = NextGame(
-                        guild_id=guild_id,
-                        created_date=arrow.now(UTC).int_timestamp,
-                        next_date=output_date,
-                        announce_on=False,
-                    )
-                    session.add(next_game)
+                    session.execute(delete(NextGame).where(NextGame.guild_id == guild_id))
+
+                # Create new record
+                next_game = NextGame(
+                    guild_id=guild_id, created_date=arrow.now(UTC).int_timestamp, next_date=output_date
+                )
+                session.add(next_game)
 
                 session.commit()
                 logger.debug(f"Updated next game date for guild {guild_id}")
@@ -254,7 +262,7 @@ class DatabaseIO:
             logger.error(f"Error adding next game data: {e}")
             raise
 
-    def next_game_announce_toggle(self, state: int, guild_id: int) -> None:
+    def next_game_announce_toggle(self, state: bool, guild_id: int) -> None:
         """Toggle the announce_on for the given guild ID.
 
         :param state: 0 or 1 (False or True).
@@ -262,16 +270,17 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                next_game = session.query(NextGame).filter(NextGame.guild_id == guild_id).first()
+                select_stmt = select(NextGame).where(NextGame.guild_id == guild_id)
+                next_game = session.execute(select_stmt).scalar_one_or_none()
                 if next_game:
-                    next_game.announce_on = bool(state)
+                    next_game.announce_on = state
                     session.commit()
-                    logger.debug(f"Toggled announcements to {bool(state)} for guild {guild_id}")
+                    logger.debug(f"Toggled announcements to {state} for guild {guild_id}")
         except Exception as e:
             logger.error(f"Error toggling announcements: {e}")
             raise
 
-    def next_game_get_defaults(self, guild_id: int) -> Optional[Tuple[str, int]]:
+    def next_game_get_defaults(self, guild_id: int) -> Optional[Config]:
         """Get the default next game start time and interval from the config database.
 
         :param guild_id: Discord guild ID.
@@ -279,27 +288,25 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                result = (
-                    session.query(Config.next_game_start, Config.next_game_interval)
-                    .filter(Config.guild_id == guild_id)
-                    .first()
-                )
+                select_stmt = select(Config).where(Config.guild_id == guild_id)
+                result = session.execute(select_stmt).scalar_one_or_none()
                 logger.debug(f"Retrieved next game defaults for guild {guild_id}")
                 return result
         except Exception as e:
             logger.error(f"Error getting next game defaults: {e}")
             return None
 
-    def next_game_get_all_announcing(self) -> List[Tuple[int, int]]:
+    def next_game_get_all_announcing(self) -> Sequence[NextGame]:
         """Get all guilds that have announcements enabled.
 
         :return: List of tuples (guild_id, next_date).
         """
         try:
             with self.get_session() as session:
-                results = session.query(NextGame.guild_id, NextGame.next_date).filter(NextGame.announce_on).all()
-                logger.debug(f"Retrieved {len(results)} guilds with announcements enabled")
-                return results
+                select_stmt = select(NextGame).where(NextGame.announce_on)
+                results = session.execute(select_stmt).scalars()
+                logger.debug(f"Retrieved {len(results.all())} guilds with announcements enabled")
+                return results.all()
         except Exception as e:
             logger.error(f"Error getting announcing guilds: {e}")
             return []
@@ -311,7 +318,8 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                results = session.query(Config.guild_id, Config.prefix).all()
+                select_stmt = select(Config.guild_id, Config.prefix)
+                results = session.execute(select_stmt).all()
                 config_dict = {guild_id: prefix for guild_id, prefix in results}
                 logger.debug(f"Loaded prefixes for {len(config_dict)} guilds")
                 return config_dict
@@ -361,11 +369,12 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                config = session.query(Config).filter(Config.guild_id == guild_id).first()
+                select_stmt = select(Config).where(Config.guild_id == guild_id)
+                config = session.execute(select_stmt).scalar_one_or_none()
                 if config:
                     config.prefix = prefix
-                    session.commit()
-                    logger.debug(f"Updated prefix for guild {guild_id}")
+                session.commit()
+                logger.debug(f"Updated prefix for guild {guild_id}")
         except Exception as e:
             logger.error(f"Error updating prefix: {e}")
             raise
@@ -378,11 +387,12 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                config = session.query(Config).filter(Config.guild_id == guild_id).first()
+                select_stmt = select(Config).where(Config.guild_id == guild_id)
+                config = session.execute(select_stmt).scalar_one_or_none()
                 if config:
                     config.next_game_start = default_time
-                    session.commit()
-                    logger.debug(f"Updated next game default time for guild {guild_id}")
+                session.commit()
+                logger.debug(f"Updated next game default time for guild {guild_id}")
         except Exception as e:
             logger.error(f"Error updating next game default time: {e}")
             raise
@@ -395,11 +405,12 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                config = session.query(Config).filter(Config.guild_id == guild_id).first()
+                select_stmt = select(Config).where(Config.guild_id == guild_id)
+                config = session.execute(select_stmt).scalar_one_or_none()
                 if config:
                     config.next_game_interval = default_interval
-                    session.commit()
-                    logger.debug(f"Updated next game default interval for guild {guild_id}")
+                session.commit()
+                logger.debug(f"Updated next game default interval for guild {guild_id}")
         except Exception as e:
             logger.error(f"Error updating next game default interval: {e}")
             raise
@@ -412,38 +423,40 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                config = session.query(Config).filter(Config.guild_id == guild_id).first()
+                select_stmt = select(Config).where(Config.guild_id == guild_id)
+                config = session.execute(select_stmt).scalar_one_or_none()
                 if config:
                     config.announce_channel = announce_channel
-                    session.commit()
-                    logger.debug(f"Updated announce channel for guild {guild_id}")
+                session.commit()
+                logger.debug(f"Updated announce channel for guild {guild_id}")
         except Exception as e:
             logger.error(f"Error updating announce channel: {e}")
             raise
 
-    def config_load_guild(self, guild_id: int) -> Optional[Dict[str, Any]]:
-        """Pull the saved config for the supplied guild_id.
+    # def config_load_guild(self, guild_id: int) -> Optional[Dict[str, Any]]:
+    #     """Pull the saved config for the supplied guild_id.
 
-        :param guild_id: Discord guild ID.
-        :return: Dictionary of configuration values or None.
-        """
-        try:
-            with self.get_session() as session:
-                config = session.query(Config).filter(Config.guild_id == guild_id).first()
-                if config:
-                    result = {
-                        "guild_id": config.guild_id,
-                        "prefix": config.prefix,
-                        "next_game_start": config.next_game_start,
-                        "next_game_interval": config.next_game_interval,
-                        "announce_channel": config.announce_channel,
-                    }
-                    logger.debug(f"Loaded config for guild {guild_id}")
-                    return result
-                return None
-        except Exception as e:
-            logger.error(f"Error loading guild config: {e}")
-            return None
+    #     :param guild_id: Discord guild ID.
+    #     :return: Dictionary of configuration values or None.
+    #     """
+    #     try:
+    #         with self.get_session() as session:
+    #             select_stmt = select(Config).where(Config.guild_id == guild_id)
+    #             config = session.execute(select_stmt).scalar_one_or_none()
+    #             if config:
+    #                 result = {
+    #                     "guild_id": config.guild_id,
+    #                     "prefix": config.prefix,
+    #                     "next_game_start": config.next_game_start,
+    #                     "next_game_interval": config.next_game_interval,
+    #                     "announce_channel": config.announce_channel,
+    #                 }
+    #                 logger.debug(f"Loaded config for guild {guild_id}")
+    #                 return result
+    #             return None
+    #     except Exception as e:
+    #         logger.error(f"Error loading guild config: {e}")
+    #         return None
 
     def guild_remove_all(self, guild_id: int) -> None:
         """Function called when bot is removed from guild, cleans up all DB references.
