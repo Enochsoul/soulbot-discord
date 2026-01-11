@@ -10,7 +10,7 @@ import discord
 from discord.ext import commands, tasks
 from init_support import InitiativeTrack
 from loguru import logger
-from soulbot_support import soulbot_db
+from soulbot_support import NextGame, soulbot_db
 
 # Constants
 VALID_TIMEZONES = ["ET", "CT", "MT", "PT"]
@@ -166,22 +166,21 @@ class GameAnnouncer:
         except Exception as e:
             logger.error(f"Error in game announcement task: {e}")
 
-    async def _process_server_announcement(self, server_data: tuple) -> None:
+    async def _process_server_announcement(self, server_data: NextGame) -> None:
         """Process announcement for a single server."""
-        guild_id, scheduled_time = server_data[0], server_data[1]
 
-        guild = self.bot.get_guild(guild_id)
+        guild = self.bot.get_guild(server_data.guild_id)
         if not guild:
-            logger.warning(f"Guild {guild_id} not found")
+            logger.warning(f"Guild {server_data.guild_id} not found")
             return
 
-        config = soulbot_db.config_load_guild(guild.id)
-        channel = discord.utils.get(guild.text_channels, name=config["announce_channel"])
+        config = soulbot_db.next_game_get_defaults(guild.id)
+        channel = discord.utils.get(guild.text_channels, name=config.announce_channel)
         if not channel:
             logger.warning(f"Announcement channel not found for guild {guild.id}")
             return
 
-        next_game_scheduled = arrow.get(scheduled_time)
+        next_game_scheduled = arrow.get(server_data.next_date)
         countdown = next_game_scheduled - arrow.utcnow()
 
         # Check if we're within 60 minutes (3600 seconds) of the scheduled time
@@ -193,7 +192,7 @@ class GameAnnouncer:
 
     async def _send_announcement(self, channel: discord.TextChannel, countdown: timedelta, guild_id: int) -> None:
         """Send the actual game announcement."""
-        soulbot_db.next_game_announce_toggle(0, guild_id)
+        soulbot_db.next_game_announce_toggle(False, guild_id)
 
         # Calculate minutes remaining more accurately
         total_seconds = countdown.total_seconds()
