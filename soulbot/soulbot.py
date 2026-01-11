@@ -63,6 +63,22 @@ class ConfigCommands(commands.Cog):
         if ctx.invoked_subcommand is None:
             await ctx.send(f"Additional arguments required, see **{ctx.prefix}help config** for available options.")
 
+    @config.command(help="Display the current guild config options.", name="display")
+    async def display_config(self, ctx: commands.Context) -> None:
+        try:
+            if not ctx.guild:
+                await ctx.send("This command can only be used in a guild.")
+                return
+            config = soulbot_db.config_get_guild(ctx.guild.id)
+
+            if not config:
+                await ctx.send("No configuration found for this guild.")
+                return
+            output = f"""Guild ID: {config.guild_id}\nPrefix: {config.prefix}\nNext Game default Start Time: {config.next_game_start}\nNext Game default interval: {config.next_game_interval}\nNext Game announce channel: {config.announce_channel}"""
+            await ctx.send(f"Current configuration for {ctx.guild.name}:\n{output}")
+        except (Exception, RuntimeError) as e:
+            await ctx.send(f"An error occurred while displaying the configuration: {e}")
+
     @config.command(help="Changes the bot command prefix.", name="prefix")
     async def set_prefix(self, ctx: commands.Context, prefix: str) -> None:
         """Update the bot command prefix for this guild."""
