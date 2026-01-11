@@ -1,5 +1,7 @@
 """Cog for tracking Initiative and attack rolls."""
 
+import re
+
 import discord
 import init_support
 from discord.ext import commands
@@ -17,9 +19,10 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
 
     def _parse_mention(self, ctx: commands.Context, name: str) -> str:
         """Parse Discord user mentions and return display name."""
-        if "!" in name and "@" in name:
-            mention_user = name.replace("<", "").replace(">", "").replace("@", "").replace("!", "")
-            return ctx.guild.get_member(int(mention_user)).display_name
+        user_id_match = re.fullmatch(r"<@!?(\d+)>", name)
+        if user_id_match:
+            user_id = int(user_id_match.group(1))
+            return ctx.guild.get_member(user_id).display_name
         return name
 
     def _find_active_player(self, guild_tracker: init_support.InitiativeTrack) -> str:
