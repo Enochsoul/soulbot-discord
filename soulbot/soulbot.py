@@ -177,7 +177,7 @@ class GameAnnouncer:
             logger.warning(f"Guild {server_data.guild_id} not found")
             return
 
-        config = soulbot_db.next_game_get_defaults(guild.id)
+        config = soulbot_db.config_get_guild(guild.id)
         channel = discord.utils.get(guild.text_channels, name=config.announce_channel)
         if not channel:
             error_msg = f"Announcement channel not found for guild {guild.id}"

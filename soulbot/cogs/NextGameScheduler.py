@@ -73,7 +73,7 @@ class NextGameScheduler(discord.Cog, name="Next Game Scheduler"):
         Default: 13:00MT 14 days from date command is run.
         """
         timezones = {"ET": ET, "CT": CT, "MT": MT, "PT": PT}
-        guild_config = soulbot_db.next_game_get_defaults(ctx.guild.id)
+        guild_config = soulbot_db.config_get_guild(ctx.guild.id)
         if not guild_config:
             logger.error(f"Error with guild config for {ctx.guild.id}.")
             await ctx.send("There was an error fetching the guild config, please check the logs.")
@@ -112,7 +112,7 @@ class NextGameScheduler(discord.Cog, name="Next Game Scheduler"):
                 await ctx.send("Please use the format: DD/MM/YYYY(EG: 31/05/2020)")
             else:
                 timezones = {"ET": ET, "CT": CT, "MT": MT, "PT": PT}
-                guild_config = soulbot_db.next_game_get_defaults(ctx.guild.id)
+                guild_config = soulbot_db.config_get_guild(ctx.guild.id)
                 if not guild_config:
                     logger.error(f"Error with guild config for {ctx.guild.id}.")
                     await ctx.send("There was an error fetching the guild config, please check the logs.")

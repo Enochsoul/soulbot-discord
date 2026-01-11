@@ -285,7 +285,7 @@ class DatabaseIO:
             logger.error(f"Error toggling announcements: {e}")
             raise
 
-    def next_game_get_defaults(self, guild_id: int) -> Optional[Config]:
+    def config_get_guild(self, guild_id: int) -> Optional[Config]:
         """Get the default next game start time and interval from the config database.
 
         :param guild_id: Discord guild ID.
