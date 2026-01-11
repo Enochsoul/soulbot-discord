@@ -141,7 +141,7 @@ class Dice:
         match roll_type:
             case "d":  # Normal roll
                 bold_result: List[str] = [f"**{roll}**" if roll == die_size else str(roll) for roll in roll_result]
-                return RollResult(bold_result, sum(roll_result), "Default", modifier)
+                return RollResult(bold_result, sum(roll_result), "Normal", modifier)
 
             case "dd":  # Disadvantage roll
                 if len(roll_result) != 1:
@@ -192,12 +192,12 @@ class Dice:
         if roll_result.modifier:
             string_modifier: str = f"+{roll_result.modifier}" if roll_result.modifier > 0 else f"{roll_result.modifier}"
             if len(roll_result.rolls) == 1:
-                roll_result.string = f"rolled w/ {roll_result.roll_type}: **{roll_result.total + roll_result.modifier}**. ({roll_result.total}{string_modifier})"
+                roll_result.string = f"rolled({roll_result.roll_type}): **{roll_result.total + roll_result.modifier}**. ({roll_result.total}{string_modifier})"
                 return roll_result
             elif len(roll_result.rolls) > 1:
                 string_out: str = "+".join(roll_result.rolls) + string_modifier
                 roll_result.string = (
-                    f"rolled w/ {roll_result.roll_type}: **{roll_result.total + roll_result.modifier}**. ({string_out})"
+                    f"rolled({roll_result.roll_type}): **{roll_result.total + roll_result.modifier}**. ({string_out})"
                 )
                 return roll_result
             else:
@@ -205,5 +205,5 @@ class Dice:
                 return roll_result
         else:
             string_out = "+".join(roll_result.rolls)
-            roll_result.string = f"rolled w/ {roll_result.roll_type}: **{roll_result.total}**. ({string_out})"
+            roll_result.string = f"rolled({roll_result.roll_type}): **{roll_result.total}**. ({string_out})"
             return roll_result
