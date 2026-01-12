@@ -5,6 +5,7 @@ import random
 from typing import Dict, Optional, Sequence
 
 import arrow
+from init_support import InitiativeTrack as InitTrackType
 from loguru import logger
 from sqlalchemy import Boolean, Integer, String, Text, create_engine, delete, select
 from sqlalchemy.exc import IntegrityError
@@ -89,10 +90,10 @@ class DatabaseIO:
         """Get a database session."""
         return self.SessionLocal()
 
-    def init_db_add(self, guild_id: int, init_insert) -> None:
+    def init_db_add(self, guild_id: int, init_insert: InitTrackType) -> None:
         """Insert/overwrite Initiative tracker data into the database.
 
-        :param init_insert: List of tuples containing (guild_id, name, init) values.
+        :param init_insert: InitiativeTrack object to be inserted into the database.
         """
         try:
             with self.get_session() as session:
