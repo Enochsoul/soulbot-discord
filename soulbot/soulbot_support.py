@@ -5,7 +5,6 @@ import random
 from typing import Dict, Optional, Sequence
 
 import arrow
-import sqlalchemy
 from loguru import logger
 from sqlalchemy import Boolean, Integer, String, Text, create_engine, delete, select
 from sqlalchemy.exc import IntegrityError
@@ -285,7 +284,7 @@ class DatabaseIO:
             logger.error(f"Error toggling announcements: {e}")
             raise
 
-    def config_get_guild(self, guild_id: int) -> Optional[Config]:
+    def config_get_guild(self, guild_id: int) -> Config:
         """Get the default next game start time and interval from the config database.
 
         :param guild_id: Discord guild ID.
@@ -295,11 +294,14 @@ class DatabaseIO:
             with self.get_session() as session:
                 select_stmt = select(Config).where(Config.guild_id == guild_id)
                 result = session.execute(select_stmt).scalar_one_or_none()
-                logger.debug(f"Retrieved next game defaults for guild {guild_id}")
-                return result
+                if result:
+                    logger.debug(f"Retrieved next game defaults for guild {guild_id}")
+                    return result
+                else:
+                    raise LookupError(f"Config not found for guild {guild_id}")
         except Exception as e:
             logger.error(f"Error getting next game defaults: {e}")
-            return None
+            raise
 
     def next_game_get_all_announcing(self) -> Sequence[NextGame]:
         """Get all guilds that have announcements enabled.
