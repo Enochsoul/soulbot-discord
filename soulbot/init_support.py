@@ -1,11 +1,11 @@
 """Support functions for Initiative Tracker async function capabilities."""
 
-from typing import Any, Callable, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Tuple
 
+import DiceRoller
 import discord
-from DiceRoller import die_roll
+import tabulate
 from discord.ext import commands
-from tabulate import tabulate
 
 
 class InitiativeTrack:
@@ -13,7 +13,7 @@ class InitiativeTrack:
 
     def __init__(self) -> None:
         self.combatant_dict: dict[str, int] = {}
-        self.tracker: list[list[Union[str, int]]] = []
+        self.tracker: list[list[str | int]] = []
         self.tracker_active: bool = False
         self.turn: list[str] = []
         self.escalation: int = 0
@@ -27,7 +27,9 @@ class InitiativeTrack:
         then builds the initiative activity table.
         """
         # Sort combatants by initiative value in descending order
-        sorted_combatants = sorted(self.combatant_dict.items(), key=lambda x: x[1], reverse=True)
+        sorted_combatants = sorted(
+            self.combatant_dict.items(), key=lambda x: x[1], reverse=True
+        )
 
         # Build table with turn markers
         table = []
@@ -38,7 +40,7 @@ class InitiativeTrack:
 
     def embed_template(self) -> tuple[discord.Embed, str]:
         """Initiative tracker embed generator."""
-        init_table = tabulate(
+        init_table = tabulate.tabulate(
             self.tracker,
             headers=["Active", "Player", "Initiative"],
             tablefmt="fancy_grid",
@@ -49,7 +51,9 @@ class InitiativeTrack:
         return embed, f"```{init_table}```"
 
 
-def handle_init_roll_logic(guild_tracker: InitiativeTrack, player_name: str, init_bonus: int) -> str:
+def handle_init_roll_logic(
+    guild_tracker: InitiativeTrack, player_name: str, init_bonus: int
+) -> str:
     """Handle the core logic for initiative rolling."""
     if guild_tracker.tracker_active:
         return "Initiative Tracker is locked in an active combat session."
@@ -58,22 +62,29 @@ def handle_init_roll_logic(guild_tracker: InitiativeTrack, player_name: str, ini
         return f"{player_name} is already in the initiative order."
 
     # Roll initiative and add to tracker
-    initiative_roll = die_roll.roll("1d20").total
+    initiative_roll = DiceRoller.die_roll.roll("1d20").total
     total_initiative = initiative_roll + init_bonus
 
     guild_tracker.combatant_dict[player_name] = total_initiative
-    guild_tracker.turn = ["    " for _ in range(len(guild_tracker.combatant_dict))]
+    guild_tracker.turn = [
+        "    " for _ in range(len(guild_tracker.combatant_dict))
+    ]
     guild_tracker.build_init_table()
 
     return f"{player_name}'s Initiative is ({initiative_roll}+{init_bonus}) {total_initiative}."
 
 
 def handle_start_logic(
-    guild_tracker: InitiativeTrack, ctx: commands.Context, update_database_func: Callable[[commands.Context, Any], None]
+    guild_tracker: InitiativeTrack,
+    ctx: commands.Context,
+    update_database_func: Callable[[commands.Context, Any], None],
 ) -> Tuple[str, Optional[discord.Embed]]:
     """Handle the core logic for starting the tracker."""
     if len(guild_tracker.combatant_dict) == 0:
-        return f"Please use **{ctx.prefix}init roll** to add to the order first.", None
+        return (
+            f"Please use **{ctx.prefix}init roll** to add to the order first.",
+            None,
+        )
 
     if guild_tracker.tracker_active:
         return "Tracker is already started.", None
@@ -92,18 +103,25 @@ def handle_start_logic(
 
 
 def handle_next_turn_logic(
-    guild_tracker: InitiativeTrack, ctx: commands.Context, update_database_func: Callable[[commands.Context, Any], None]
+    guild_tracker: InitiativeTrack,
+    ctx: commands.Context,
+    update_database_func: Callable[[commands.Context, Any], None],
 ) -> Tuple[str, Optional[discord.Embed]]:
     """Handle the core logic for advancing to the next turn."""
     if not guild_tracker.tracker_active:
-        return f"Tracker not active, use **{ctx.prefix}init start** to begin.", None
+        return (
+            f"Tracker not active, use **{ctx.prefix}init start** to begin.",
+            None,
+        )
 
     try:
         current_turn_index = guild_tracker.turn.index("--->")
     except ValueError:
         return "Error: No active turn marker found.", None
 
-    is_last_combatant = current_turn_index == len(guild_tracker.combatant_dict) - 1
+    is_last_combatant = (
+        current_turn_index == len(guild_tracker.combatant_dict) - 1
+    )
 
     # Advance turn
     guild_tracker.turn.insert(0, guild_tracker.turn.pop(-1))
@@ -133,7 +151,10 @@ def handle_delay_logic(
     """Handle the core logic for delaying a player's turn."""
     # Check if tracker is active
     if not guild_tracker.tracker_active:
-        return f"Tracker not active, use **{ctx.prefix}init start** to begin.", None
+        return (
+            f"Tracker not active, use **{ctx.prefix}init start** to begin.",
+            None,
+        )
 
     # Check if player is in the initiative order
     if player_name not in guild_tracker.combatant_dict:
@@ -142,7 +163,10 @@ def handle_delay_logic(
     # Get current player's initiative and validate new initiative
     current_init = guild_tracker.combatant_dict[player_name]
     if new_init > current_init:
-        return f"New initiative ({new_init}) must be lower than original ({current_init}).", None
+        return (
+            f"New initiative ({new_init}) must be lower than original ({current_init}).",
+            None,
+        )
 
     # Find the current active player
     active_player = None
@@ -164,9 +188,7 @@ def handle_delay_logic(
 
     # Generate response
     embed, table = guild_tracker.embed_template()
-    message = (
-        f"Initiative for {player_name} has been delayed to {new_init}. Initiative order has been recalculated.\n{table}"
-    )
+    message = f"Initiative for {player_name} has been delayed to {new_init}. Initiative order has been recalculated.\n{table}"
     return message, embed
 
 
@@ -189,7 +211,7 @@ def handle_npc_logic(
         return f"{npc_name} is already used in the initiative order.", None
 
     # Roll initiative
-    initiative_roll = die_roll.roll("1d20").total
+    initiative_roll = DiceRoller.die_roll.roll("1d20").total
     total_initiative = initiative_roll + init_bonus
 
     # Find and preserve the current active player
@@ -197,7 +219,9 @@ def handle_npc_logic(
 
     # Add NPC to combatant dictionary
     guild_tracker.combatant_dict[npc_name] = total_initiative
-    guild_tracker.turn = ["    " for _ in range(len(guild_tracker.combatant_dict))]
+    guild_tracker.turn = [
+        "    " for _ in range(len(guild_tracker.combatant_dict))
+    ]
     guild_tracker.build_init_table()
 
     if guild_tracker.tracker_active:
@@ -241,11 +265,16 @@ def handle_remove_logic(
         active_user = find_active_player_func(guild_tracker)
 
         if active_user == name:
-            return f"{name} is the active combatant, please advance the turn before removing them.", None
+            return (
+                f"{name} is the active combatant, please advance the turn before removing them.",
+                None,
+            )
 
         # Remove the combatant
         del guild_tracker.combatant_dict[name]
-        guild_tracker.turn = ["    " for _ in range(len(guild_tracker.combatant_dict))]
+        guild_tracker.turn = [
+            "    " for _ in range(len(guild_tracker.combatant_dict))
+        ]
         guild_tracker.build_init_table()
 
         # Update database
@@ -259,7 +288,9 @@ def handle_remove_logic(
     else:
         # Handle inactive tracker scenario
         del guild_tracker.combatant_dict[name]
-        guild_tracker.turn = ["    " for _ in range(len(guild_tracker.combatant_dict))]
+        guild_tracker.turn = [
+            "    " for _ in range(len(guild_tracker.combatant_dict))
+        ]
         guild_tracker.build_init_table()
         return f"{name} has been removed from the initiative table.", None
 
@@ -322,7 +353,9 @@ def handle_active_logic(
         return f"{name} is not in the initiative order.", None
 
     # Reset all turn markers and set the active player
-    guild_tracker.turn = ["    " for _ in range(len(guild_tracker.combatant_dict))]
+    guild_tracker.turn = [
+        "    " for _ in range(len(guild_tracker.combatant_dict))
+    ]
     set_active_player_func(guild_tracker, name)
     guild_tracker.build_init_table()
 
@@ -332,7 +365,10 @@ def handle_active_logic(
 
 
 def handle_attack_logic(
-    ctx: commands.Context, bonus: int, roll_type: str, guild_tracker: InitiativeTrack
+    ctx: commands.Context,
+    bonus: int,
+    roll_type: str,
+    guild_tracker: InitiativeTrack,
 ) -> Tuple[str, Optional[discord.Embed]]:
     """Handle the core logic for player attack rolls."""
     # Valid roll types mapping
@@ -340,10 +376,15 @@ def handle_attack_logic(
 
     # Validate roll type
     if roll_type not in valid_roll_types:
-        return f"Invalid roll type: {roll_type}. Valid types are: {', '.join(valid_roll_types.keys())}", None
+        return (
+            f"Invalid roll type: {roll_type}. Valid types are: {', '.join(valid_roll_types.keys())}",
+            None,
+        )
 
     # Roll the dice
-    attack_natural = die_roll.roll(valid_roll_types[roll_type]).total
+    attack_natural = DiceRoller.die_roll.roll(
+        valid_roll_types[roll_type]
+    ).total
     escalation = guild_tracker.escalation
     attack_modified = attack_natural + bonus + escalation
 
@@ -363,26 +404,41 @@ def handle_attack_logic(
         description=f"{attack_modified}\n{math_breakdown}",
         color=0x0000FF,
     )
-    attack_embed.add_field(name="Natural Roll", value=f"{attack_natural}", inline=False)
-    attack_embed.add_field(name="Natural Crit", value=crit_indicators["natural"], inline=True)
-    attack_embed.add_field(name="+2 Crit Range", value=crit_indicators["plus2"], inline=True)
-    attack_embed.add_field(name="+4 Crit Range", value=crit_indicators["plus4"], inline=True)
+    attack_embed.add_field(
+        name="Natural Roll", value=f"{attack_natural}", inline=False
+    )
+    attack_embed.add_field(
+        name="Natural Crit", value=crit_indicators["natural"], inline=True
+    )
+    attack_embed.add_field(
+        name="+2 Crit Range", value=crit_indicators["plus2"], inline=True
+    )
+    attack_embed.add_field(
+        name="+4 Crit Range", value=crit_indicators["plus4"], inline=True
+    )
     attack_embed.add_field(name="Escalation", value=f"{escalation}")
 
     return f"{ctx.author.mention} rolled to attack.", attack_embed
 
 
-def handle_attack_npc_logic(ctx: commands.Context, bonus: int, roll_type: str) -> Tuple[str, Optional[discord.Embed]]:
+def handle_attack_npc_logic(
+    ctx: commands.Context, bonus: int, roll_type: str
+) -> Tuple[str, Optional[discord.Embed]]:
     """Handle the core logic for NPC attack rolls."""
     # Valid roll types mapping
     valid_roll_types = {"d": "1d20", "ad": "1ad20", "dd": "1dd20"}
 
     # Validate roll type
     if roll_type not in valid_roll_types:
-        return f"Invalid roll type: {roll_type}. Valid types are: {', '.join(valid_roll_types.keys())}", None
+        return (
+            f"Invalid roll type: {roll_type}. Valid types are: {', '.join(valid_roll_types.keys())}",
+            None,
+        )
 
     # Roll the dice
-    attack_natural = die_roll.roll(valid_roll_types[roll_type]).total
+    attack_natural = DiceRoller.die_roll.roll(
+        valid_roll_types[roll_type]
+    ).total
     attack_modified = attack_natural + bonus
 
     # Determine crit status
@@ -401,10 +457,18 @@ def handle_attack_npc_logic(ctx: commands.Context, bonus: int, roll_type: str) -
         description=f"{attack_modified}\n{math_breakdown}",
         color=0x0000FF,
     )
-    attack_embed.add_field(name="Natural Roll", value=f"{attack_natural}", inline=False)
-    attack_embed.add_field(name="Natural Crit", value=crit_indicators["natural"], inline=True)
-    attack_embed.add_field(name="+2 Crit Range", value=crit_indicators["plus2"], inline=True)
-    attack_embed.add_field(name="+4 Crit Range", value=crit_indicators["plus4"], inline=True)
+    attack_embed.add_field(
+        name="Natural Roll", value=f"{attack_natural}", inline=False
+    )
+    attack_embed.add_field(
+        name="Natural Crit", value=crit_indicators["natural"], inline=True
+    )
+    attack_embed.add_field(
+        name="+2 Crit Range", value=crit_indicators["plus2"], inline=True
+    )
+    attack_embed.add_field(
+        name="+4 Crit Range", value=crit_indicators["plus4"], inline=True
+    )
     attack_embed.add_field(name="Escalation", value="N/A")
 
     return f"{ctx.author.mention} rolled an **NPC attack**.", attack_embed
