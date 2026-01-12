@@ -5,12 +5,10 @@ import random
 from typing import Dict, Optional, Sequence
 
 import arrow
-from init_support import InitiativeTrack as InitTrackType
-from loguru import logger
-from sqlalchemy import Boolean, Integer, String, Text, create_engine, delete, select
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
-from sqlalchemy.types import PickleType
+import init_support
+import loguru
+import sqlalchemy
+from sqlalchemy import exc, orm, types
 
 # Timezone constants
 MT = arrow.now("US/Mountain").tzinfo
@@ -21,7 +19,7 @@ UTC = arrow.utcnow().tzinfo
 
 
 # SQLAlchemy setup
-class Base(DeclarativeBase):
+class Base(orm.DeclarativeBase):
     pass
 
 
@@ -30,10 +28,18 @@ class NextGame(Base):
 
     __tablename__ = "next_game"
 
-    guild_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    created_date: Mapped[int] = mapped_column(Integer, nullable=False)
-    next_date: Mapped[int] = mapped_column(Integer, nullable=False)
-    announce_on: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    guild_id: orm.Mapped[int] = orm.mapped_column(
+        sqlalchemy.Integer, primary_key=True
+    )
+    created_date: orm.Mapped[int] = orm.mapped_column(
+        sqlalchemy.Integer, nullable=False
+    )
+    next_date: orm.Mapped[int] = orm.mapped_column(
+        sqlalchemy.Integer, nullable=False
+    )
+    announce_on: orm.Mapped[bool] = orm.mapped_column(
+        sqlalchemy.Boolean, default=True, nullable=False
+    )
 
 
 class Quote(Base):
@@ -41,9 +47,13 @@ class Quote(Base):
 
     __tablename__ = "quotes"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    guild_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    quote: Mapped[str] = mapped_column(Text, nullable=False)
+    id: orm.Mapped[int] = orm.mapped_column(
+        sqlalchemy.Integer, primary_key=True, autoincrement=True
+    )
+    guild_id: orm.Mapped[int] = orm.mapped_column(
+        sqlalchemy.Integer, nullable=False
+    )
+    quote: orm.Mapped[str] = orm.mapped_column(sqlalchemy.Text, nullable=False)
 
 
 class Initiative(Base):
@@ -51,9 +61,15 @@ class Initiative(Base):
 
     __tablename__ = "initiative"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    guild_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    table: Mapped[PickleType] = mapped_column(PickleType, nullable=False)
+    id: orm.Mapped[int] = orm.mapped_column(
+        sqlalchemy.Integer, primary_key=True, autoincrement=True
+    )
+    guild_id: orm.Mapped[int] = orm.mapped_column(
+        sqlalchemy.Integer, nullable=False
+    )
+    table: orm.Mapped[types.PickleType] = orm.mapped_column(
+        sqlalchemy.PickleType, nullable=False
+    )
 
 
 class Config(Base):
@@ -61,11 +77,21 @@ class Config(Base):
 
     __tablename__ = "config"
 
-    guild_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    prefix: Mapped[str] = mapped_column(String(10), nullable=False)
-    next_game_start: Mapped[str] = mapped_column(String(20), nullable=False)
-    next_game_interval: Mapped[int] = mapped_column(Integer, nullable=False)
-    announce_channel: Mapped[str] = mapped_column(String(255), nullable=False)
+    guild_id: orm.Mapped[int] = orm.mapped_column(
+        sqlalchemy.Integer, primary_key=True
+    )
+    prefix: orm.Mapped[str] = orm.mapped_column(
+        sqlalchemy.String(10), nullable=False
+    )
+    next_game_start: orm.Mapped[str] = orm.mapped_column(
+        sqlalchemy.String(20), nullable=False
+    )
+    next_game_interval: orm.Mapped[int] = orm.mapped_column(
+        sqlalchemy.Integer, nullable=False
+    )
+    announce_channel: orm.Mapped[str] = orm.mapped_column(
+        sqlalchemy.String(255), nullable=False
+    )
 
 
 class DatabaseIO:
@@ -73,24 +99,28 @@ class DatabaseIO:
 
     def __init__(self, database_url: str):
         """Initialize database connection and create tables."""
-        self.engine = create_engine(
+        self.engine = sqlalchemy.create_engine(
             database_url,
             echo=False,  # Set to True for SQL debugging
-            connect_args={"check_same_thread": False} if database_url.startswith("sqlite") else {},
+            connect_args={"check_same_thread": False}
+            if database_url.startswith("sqlite")
+            else {},
         )
 
         # Create tables
         Base.metadata.create_all(self.engine)
 
         # Create session factory
-        self.SessionLocal = sessionmaker(bind=self.engine)
-        logger.info("Database initialized with SQLAlchemy")
+        self.SessionLocal = orm.sessionmaker(bind=self.engine)
+        loguru.logger.info("Database initialized with SQLAlchemy")
 
-    def get_session(self) -> Session:
+    def get_session(self) -> orm.Session:
         """Get a database session."""
         return self.SessionLocal()
 
-    def init_db_add(self, guild_id: int, init_insert: InitTrackType) -> None:
+    def init_db_add(
+        self, guild_id: int, init_insert: init_support.InitiativeTrack
+    ) -> None:
         """Insert/overwrite Initiative tracker data into the database.
 
         :param init_insert: InitiativeTrack object to be inserted into the database.
@@ -99,16 +129,20 @@ class DatabaseIO:
             with self.get_session() as session:
                 # Clear existing records for the guild
                 if init_insert:
-                    session.execute(delete(Initiative).where(Initiative.guild_id == guild_id))
+                    session.execute(
+                        sqlalchemy.delete(Initiative).where(
+                            Initiative.guild_id == guild_id
+                        )
+                    )
 
                 # Add new record
                 initiative = Initiative(guild_id=guild_id, table=init_insert)
                 session.add(initiative)
 
                 session.commit()
-                logger.debug(f"Added {init_insert} initiative record.")
+                loguru.logger.debug(f"Added {init_insert} initiative record.")
         except Exception as e:
-            logger.error(f"Error adding initiative data: {e}")
+            loguru.logger.error(f"Error adding initiative data: {e}")
             raise
 
     def init_db_reset(self, guild_id: int) -> None:
@@ -118,11 +152,15 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                session.execute(delete(Initiative).where(Initiative.guild_id == guild_id))
+                session.execute(
+                    sqlalchemy.delete(Initiative).where(
+                        Initiative.guild_id == guild_id
+                    )
+                )
                 session.commit()
-                logger.debug(f"Reset initiative for guild {guild_id}.")
+                loguru.logger.debug(f"Reset initiative for guild {guild_id}.")
         except Exception as e:
-            logger.error(f"Error resetting initiative data: {e}")
+            loguru.logger.error(f"Error resetting initiative data: {e}")
             raise
 
     def init_db_rebuild(self, guild_id: int):
@@ -133,12 +171,16 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                select_stmt = select(Initiative.table).where(Initiative.guild_id == guild_id)
+                select_stmt = sqlalchemy.select(Initiative.table).where(
+                    Initiative.guild_id == guild_id
+                )
                 results = session.execute(select_stmt).scalar_one_or_none()
-                logger.debug(f"Retrieved initiative records for guild {guild_id}")
+                loguru.logger.debug(
+                    f"Retrieved initiative records for guild {guild_id}"
+                )
                 return results
         except Exception as e:
-            logger.error(f"Error rebuilding initiative data: {e}")
+            loguru.logger.error(f"Error rebuilding initiative data: {e}")
             raise
 
     def quote_db_add(self, quote_insert: str, guild_id: int) -> None:
@@ -152,9 +194,9 @@ class DatabaseIO:
                 quote = Quote(guild_id=guild_id, quote=quote_insert)
                 session.add(quote)
                 session.commit()
-                logger.debug(f"Added quote for guild {guild_id}")
+                loguru.logger.debug(f"Added quote for guild {guild_id}")
         except Exception as e:
-            logger.error(f"Error adding quote: {e}")
+            loguru.logger.error(f"Error adding quote: {e}")
             raise
 
     def quote_db_search(self, quote_search: str, guild_id: int) -> str:
@@ -167,18 +209,24 @@ class DatabaseIO:
         try:
             with self.get_session() as session:
                 select_stmt = (
-                    select(Quote.quote).where(Quote.guild_id == guild_id).where(Quote.quote.contains(quote_search))
+                    sqlalchemy.select(Quote.quote)
+                    .where(Quote.guild_id == guild_id)
+                    .where(Quote.quote.contains(quote_search))
                 )
                 quotes = session.execute(select_stmt).scalars().all()
                 if quotes:
                     random_quote = random.choice(quotes)
-                    logger.debug(f"Found quote containing '{quote_search}' for guild {guild_id}")
+                    loguru.logger.debug(
+                        f"Found quote containing '{quote_search}' for guild {guild_id}"
+                    )
                     return f'QUOTE: "{random_quote}"'
                 else:
-                    logger.debug(f"No quotes found containing '{quote_search}' for guild {guild_id}")
+                    loguru.logger.debug(
+                        f"No quotes found containing '{quote_search}' for guild {guild_id}"
+                    )
                     return f'No quote found with the term "{quote_search}"'
         except Exception as e:
-            logger.error(f"Error searching quotes: {e}")
+            loguru.logger.error(f"Error searching quotes: {e}")
             return f"Error searching for quotes: {e}"
 
     def quote_db_random(self, guild_id: int) -> str:
@@ -190,18 +238,24 @@ class DatabaseIO:
         try:
             with self.get_session() as session:
                 # Get all quotes.
-                select_stmt = select(Quote.quote).where(Quote.guild_id == guild_id)
+                select_stmt = sqlalchemy.select(Quote.quote).where(
+                    Quote.guild_id == guild_id
+                )
                 quotes = session.execute(select_stmt).scalars().all()
 
                 if quotes:
                     quote = random.choice(quotes)
-                    logger.debug(f"Retrieved random quote for guild {guild_id}")
+                    loguru.logger.debug(
+                        f"Retrieved random quote for guild {guild_id}"
+                    )
                     return f'QUOTE: "{quote}"'
                 else:
-                    logger.debug(f"No quotes available for guild {guild_id}")
+                    loguru.logger.debug(
+                        f"No quotes available for guild {guild_id}"
+                    )
                     return "No quotes in the database."
         except Exception as e:
-            logger.error(f"Error getting random quote: {e}")
+            loguru.logger.error(f"Error getting random quote: {e}")
             return "No quotes in the database."
 
     def next_game_db_get_date(self, guild_id: int) -> int:
@@ -212,16 +266,22 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                select_stmt = select(NextGame.next_date).where(NextGame.guild_id == guild_id)
+                select_stmt = sqlalchemy.select(NextGame.next_date).where(
+                    NextGame.guild_id == guild_id
+                )
                 result = session.execute(select_stmt).scalar()
-                logger.debug(f"Retrieved next game data for guild {guild_id}")
+                loguru.logger.debug(
+                    f"Retrieved next game data for guild {guild_id}"
+                )
                 if result:
                     return result
                 else:
-                    raise RuntimeError("Error: No next game date found for guild.")
+                    raise RuntimeError(
+                        "Error: No next game date found for guild."
+                    )
         except Exception as e:
             error_msg = f"Error getting next game date: {e}"
-            logger.error(error_msg)
+            loguru.logger.error(error_msg)
             raise RuntimeError(error_msg)
 
     def next_game_db_get_announce(self, guild_id: int) -> Optional[bool]:
@@ -232,12 +292,16 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                select_stmt = select(NextGame.announce_on).where(NextGame.guild_id == guild_id)
+                select_stmt = sqlalchemy.select(NextGame.announce_on).where(
+                    NextGame.guild_id == guild_id
+                )
                 result = session.execute(select_stmt).scalar()
-                logger.debug(f"Retrieved next game data for guild {guild_id}")
+                loguru.logger.debug(
+                    f"Retrieved next game data for guild {guild_id}"
+                )
                 return result
         except Exception as e:
-            logger.error(f"Error getting next game date: {e}")
+            loguru.logger.error(f"Error getting next game date: {e}")
             return None
 
     def next_game_db_add(self, output_date: int, guild_id: int) -> None:
@@ -249,22 +313,32 @@ class DatabaseIO:
         try:
             with self.get_session() as session:
                 # Try to update existing record
-                select_stmt = select(NextGame).where(NextGame.guild_id == guild_id)
+                select_stmt = sqlalchemy.select(NextGame).where(
+                    NextGame.guild_id == guild_id
+                )
                 existing = session.execute(select_stmt).scalar()
 
                 if existing:
-                    session.execute(delete(NextGame).where(NextGame.guild_id == guild_id))
+                    session.execute(
+                        sqlalchemy.delete(NextGame).where(
+                            NextGame.guild_id == guild_id
+                        )
+                    )
 
                 # Create new record
                 next_game = NextGame(
-                    guild_id=guild_id, created_date=arrow.now(UTC).int_timestamp, next_date=output_date
+                    guild_id=guild_id,
+                    created_date=arrow.now(UTC).int_timestamp,
+                    next_date=output_date,
                 )
                 session.add(next_game)
 
                 session.commit()
-                logger.debug(f"Updated next game date for guild {guild_id}")
+                loguru.logger.debug(
+                    f"Updated next game date for guild {guild_id}"
+                )
         except Exception as e:
-            logger.error(f"Error adding next game data: {e}")
+            loguru.logger.error(f"Error adding next game data: {e}")
             raise
 
     def next_game_announce_toggle(self, state: bool, guild_id: int) -> None:
@@ -275,14 +349,18 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                select_stmt = select(NextGame).where(NextGame.guild_id == guild_id)
+                select_stmt = sqlalchemy.select(NextGame).where(
+                    NextGame.guild_id == guild_id
+                )
                 next_game = session.execute(select_stmt).scalar_one_or_none()
                 if next_game:
                     next_game.announce_on = state
                     session.commit()
-                    logger.debug(f"Toggled announcements to {state} for guild {guild_id}")
+                    loguru.logger.debug(
+                        f"Toggled announcements to {state} for guild {guild_id}"
+                    )
         except Exception as e:
-            logger.error(f"Error toggling announcements: {e}")
+            loguru.logger.error(f"Error toggling announcements: {e}")
             raise
 
     def config_get_guild(self, guild_id: int) -> Config:
@@ -293,15 +371,19 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                select_stmt = select(Config).where(Config.guild_id == guild_id)
+                select_stmt = sqlalchemy.select(Config).where(
+                    Config.guild_id == guild_id
+                )
                 result = session.execute(select_stmt).scalar_one_or_none()
                 if result:
-                    logger.debug(f"Retrieved next game defaults for guild {guild_id}")
+                    loguru.logger.debug(
+                        f"Retrieved next game defaults for guild {guild_id}"
+                    )
                     return result
                 else:
                     raise LookupError(f"Config not found for guild {guild_id}")
         except Exception as e:
-            logger.error(f"Error getting next game defaults: {e}")
+            loguru.logger.error(f"Error getting next game defaults: {e}")
             raise
 
     def next_game_get_all_announcing(self) -> Sequence[NextGame]:
@@ -311,12 +393,16 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                select_stmt = select(NextGame).where(NextGame.announce_on)
+                select_stmt = sqlalchemy.select(NextGame).where(
+                    NextGame.announce_on
+                )
                 results = session.execute(select_stmt).scalars()
-                logger.debug(f"Retrieved {len(results.all())} guilds with announcements enabled")
+                loguru.logger.debug(
+                    f"Retrieved {len(results.all())} guilds with announcements enabled"
+                )
                 return results.all()
         except Exception as e:
-            logger.error(f"Error getting announcing guilds: {e}")
+            loguru.logger.error(f"Error getting announcing guilds: {e}")
             return []
 
     def config_all_prefix_load(self) -> Dict[int, str]:
@@ -326,13 +412,17 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                select_stmt = select(Config.guild_id, Config.prefix)
+                select_stmt = sqlalchemy.select(Config.guild_id, Config.prefix)
                 results = session.execute(select_stmt).all()
-                config_dict = {guild_id: prefix for guild_id, prefix in results}
-                logger.debug(f"Loaded prefixes for {len(config_dict)} guilds")
+                config_dict = {
+                    guild_id: prefix for guild_id, prefix in results
+                }
+                loguru.logger.debug(
+                    f"Loaded prefixes for {len(config_dict)} guilds"
+                )
                 return config_dict
         except Exception as e:
-            logger.error(f"Error loading all prefixes: {e}")
+            loguru.logger.error(f"Error loading all prefixes: {e}")
             return {}
 
     def config_insert_all(
@@ -362,11 +452,13 @@ class DatabaseIO:
                 )
                 session.add(config)
                 session.commit()
-                logger.info(f"Created config for new guild {guild_id}")
-        except IntegrityError:
-            logger.warning(f"Config for guild {guild_id} already exists")
+                loguru.logger.info(f"Created config for new guild {guild_id}")
+        except exc.IntegrityError:
+            loguru.logger.warning(
+                f"Config for guild {guild_id} already exists"
+            )
         except Exception as e:
-            logger.error(f"Error creating guild config: {e}")
+            loguru.logger.error(f"Error creating guild config: {e}")
             raise
 
     def config_prefix_update(self, guild_id: int, prefix: str) -> None:
@@ -377,17 +469,21 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                select_stmt = select(Config).where(Config.guild_id == guild_id)
+                select_stmt = sqlalchemy.select(Config).where(
+                    Config.guild_id == guild_id
+                )
                 config = session.execute(select_stmt).scalar_one_or_none()
                 if config:
                     config.prefix = prefix
                 session.commit()
-                logger.debug(f"Updated prefix for guild {guild_id}")
+                loguru.logger.debug(f"Updated prefix for guild {guild_id}")
         except Exception as e:
-            logger.error(f"Error updating prefix: {e}")
+            loguru.logger.error(f"Error updating prefix: {e}")
             raise
 
-    def config_next_game_default_time_update(self, guild_id: int, default_time: str) -> None:
+    def config_next_game_default_time_update(
+        self, guild_id: int, default_time: str
+    ) -> None:
         """Add or update a guild's configured Next Game time.
 
         :param guild_id: Discord guild ID.
@@ -395,17 +491,23 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                select_stmt = select(Config).where(Config.guild_id == guild_id)
+                select_stmt = sqlalchemy.select(Config).where(
+                    Config.guild_id == guild_id
+                )
                 config = session.execute(select_stmt).scalar_one_or_none()
                 if config:
                     config.next_game_start = default_time
                 session.commit()
-                logger.debug(f"Updated next game default time for guild {guild_id}")
+                loguru.logger.debug(
+                    f"Updated next game default time for guild {guild_id}"
+                )
         except Exception as e:
-            logger.error(f"Error updating next game default time: {e}")
+            loguru.logger.error(f"Error updating next game default time: {e}")
             raise
 
-    def config_next_game_default_interval_update(self, guild_id: int, default_interval: int) -> None:
+    def config_next_game_default_interval_update(
+        self, guild_id: int, default_interval: int
+    ) -> None:
         """Add or update a guild's configured default Next Game Interval.
 
         :param guild_id: Discord guild ID.
@@ -413,17 +515,25 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                select_stmt = select(Config).where(Config.guild_id == guild_id)
+                select_stmt = sqlalchemy.select(Config).where(
+                    Config.guild_id == guild_id
+                )
                 config = session.execute(select_stmt).scalar_one_or_none()
                 if config:
                     config.next_game_interval = default_interval
                 session.commit()
-                logger.debug(f"Updated next game default interval for guild {guild_id}")
+                loguru.logger.debug(
+                    f"Updated next game default interval for guild {guild_id}"
+                )
         except Exception as e:
-            logger.error(f"Error updating next game default interval: {e}")
+            loguru.logger.error(
+                f"Error updating next game default interval: {e}"
+            )
             raise
 
-    def config_next_game_announce_channel(self, guild_id: int, announce_channel: str) -> None:
+    def config_next_game_announce_channel(
+        self, guild_id: int, announce_channel: str
+    ) -> None:
         """Update a server's configured channel for next game announcements.
 
         :param guild_id: Discord guild ID.
@@ -431,14 +541,18 @@ class DatabaseIO:
         """
         try:
             with self.get_session() as session:
-                select_stmt = select(Config).where(Config.guild_id == guild_id)
+                select_stmt = sqlalchemy.select(Config).where(
+                    Config.guild_id == guild_id
+                )
                 config = session.execute(select_stmt).scalar_one_or_none()
                 if config:
                     config.announce_channel = announce_channel
                 session.commit()
-                logger.debug(f"Updated announce channel for guild {guild_id}")
+                loguru.logger.debug(
+                    f"Updated announce channel for guild {guild_id}"
+                )
         except Exception as e:
-            logger.error(f"Error updating announce channel: {e}")
+            loguru.logger.error(f"Error updating announce channel: {e}")
             raise
 
     def guild_remove_all(self, guild_id: int) -> None:
@@ -449,19 +563,29 @@ class DatabaseIO:
         try:
             with self.get_session() as session:
                 # Delete from all tables
-                session.query(Config).filter(Config.guild_id == guild_id).delete()
-                session.query(NextGame).filter(NextGame.guild_id == guild_id).delete()
-                session.query(Quote).filter(Quote.guild_id == guild_id).delete()
-                session.query(Initiative).filter(Initiative.guild_id == guild_id).delete()
+                session.query(Config).filter(
+                    Config.guild_id == guild_id
+                ).delete()
+                session.query(NextGame).filter(
+                    NextGame.guild_id == guild_id
+                ).delete()
+                session.query(Quote).filter(
+                    Quote.guild_id == guild_id
+                ).delete()
+                session.query(Initiative).filter(
+                    Initiative.guild_id == guild_id
+                ).delete()
 
                 session.commit()
-                logger.info(f"Removed all data for guild {guild_id}")
+                loguru.logger.info(f"Removed all data for guild {guild_id}")
         except Exception as e:
-            logger.error(f"Error removing guild data: {e}")
+            loguru.logger.error(f"Error removing guild data: {e}")
             raise
 
 
 # Initialize the database instance
-db_file_path = str(pathlib.Path(__file__).parent.resolve()) + "/data/discordbot.sql"
-logger.info(f"Setting up database at: {db_file_path}")
+db_file_path = (
+    str(pathlib.Path(__file__).parent.resolve()) + "/data/discordbot.sql"
+)
+loguru.logger.info(f"Setting up database at: {db_file_path}")
 soulbot_db = DatabaseIO(f"sqlite:///{db_file_path}")
