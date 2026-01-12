@@ -31,7 +31,7 @@ class InitiativeTracker(discord.Cog, name="Initiative Tracker"):
         """Find the currently active player in the tracker."""
         for sublist in guild_tracker.tracker:
             if "--->" in sublist:
-                return sublist[1]
+                return sublist[1]  # pyright: ignore[reportReturnType]
         return ""
 
     def _update_database(
