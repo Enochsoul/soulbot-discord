@@ -7,27 +7,6 @@ from discord.ext import commands
 from loguru import logger
 
 
-def warp_element():
-    """Returns random element for use in Chaos spells."""
-    return random.choice(["Air", "Fire", "Water", "Earth", "Metal", "Void"])
-
-
-def iconic_type():
-    """Returns one of 12 different Icons."""
-    return random.choice([
-        "Priestess",
-        "Crusader",
-        "Archmage",
-        "High Druid",
-        "Elf Queen",
-        "Diabolist",
-        "Dwarf King",
-        "Great Gold Wyrm",
-        "The Three",
-        "Prince of Shadows",
-        "Lich King",
-        "Orc Lord",
-    ])
 
 
 class ChaosMageTracker:
@@ -43,8 +22,8 @@ class ChaosMageTracker:
             "**```ARM\nAttack\n```**",
             "**```yaml\nDefense\n```**",
             "**```yaml\nDefense\n```**",
-            f"**```CSS\nIconic\nIcon: {iconic_type()}\n```**",
-            f"**```CSS\nIconic\nIcon: {iconic_type()}\n```**",
+            f"**```CSS\nIconic\nIcon: {self.iconic_type()}\n```**",
+            f"**```CSS\nIconic\nIcon: {self.iconic_type()}\n```**",
         ]
         random.shuffle(self.mages[mage_name])
 
@@ -53,16 +32,45 @@ class ChaosMageTracker:
         random.shuffle(self.mages[mage_name])
         return self.mages[mage_name].pop()
 
+    @staticmethod
+    def warp_element():
+        """Returns random element for use in Chaos spells."""
+        return random.choice([
+            "Air",
+            "Fire",
+            "Water",
+            "Earth",
+            "Metal",
+            "Void",
+        ])
 
-chaos_mages = ChaosMageTracker()
+    @staticmethod
+    def iconic_type():
+        """Returns one of 12 different Icons."""
+        return random.choice([
+            "Priestess",
+            "Crusader",
+            "Archmage",
+            "High Druid",
+            "Elf Queen",
+            "Diabolist",
+            "Dwarf King",
+            "Great Gold Wyrm",
+            "The Three",
+            "Prince of Shadows",
+            "Lich King",
+            "Orc Lord",
+        ])
 
 
+# self.tracker = ChaosMageTracker()
 class ChaosMageCommands(discord.Cog, name="Chaos Mage Commands"):
     """Class definition for the Discord Cog controlling the Chaos Mage commands."""
 
-    def __init__(self, bot):
+    def __init__(self, bot, tracker: ChaosMageTracker):
         self.bot = bot
         logger.info("ChaosMageCommands cog initialized")
+        self.tracker = tracker
 
     @commands.group(
         name="chaos",
@@ -79,20 +87,20 @@ class ChaosMageCommands(discord.Cog, name="Chaos Mage Commands"):
     async def refill(self, ctx):
         """Command to refill the enacting user's pool."""
         mage_key = str(ctx.guild.id) + ctx.author.display_name
-        chaos_mages.refill(mage_key)
         logger.info(f"User {ctx.author} in guild {ctx.guild.name} refilled chaos mage pool")
         await ctx.send(f"{ctx.author.mention}'s spell determination pool has been refilled.")
 
     @chaos_main.command(help="Draw a random spell type from your spell determination pool.")
+        self.tracker.refill(mage_key)
     async def draw(self, ctx):
         """Command to draw a spell type of the enacting user's pool."""
         mage_key = str(ctx.guild.id) + ctx.author.display_name
 
         if mage_key in chaos_mages.mages:
             if len(chaos_mages.mages[mage_key]) == 2:
-                spell_type = chaos_mages.draw(mage_key)
-                chaos_mages.refill(mage_key)
                 logger.info(f"User {ctx.author} drew chaos spell (auto-refilled): {spell_type}")
+                spell_type = self.tracker.draw(mage_key)
+                self.tracker.refill(mage_key)
                 await ctx.send(
                     f"{ctx.author.mention}, your next spell will be:"
                     f"\n{spell_type}\n"
@@ -100,13 +108,13 @@ class ChaosMageCommands(discord.Cog, name="Chaos Mage Commands"):
                     f"it has automatically been refilled."
                 )
             else:
-                spell_type = chaos_mages.draw(mage_key)
                 logger.info(f"User {ctx.author} drew chaos spell: {spell_type}")
                 await ctx.send(f"{ctx.author.mention}, your next spell will be:\n{spell_type}")
+                spell_type = self.tracker.draw(mage_key)
         else:
-            chaos_mages.refill(mage_key)
-            spell_type = chaos_mages.draw(mage_key)
             logger.info(f"User {ctx.author} created new chaos mage pool and drew: {spell_type}")
+            self.tracker.refill(mage_key)
+            spell_type = self.tracker.draw(mage_key)
             await ctx.send(
                 f"{ctx.author.mention}'s pool was empty and has been filled. Your next spell will be:\n{spell_type}"
             )
@@ -114,12 +122,12 @@ class ChaosMageCommands(discord.Cog, name="Chaos Mage Commands"):
     @chaos_main.command(help="Determine warp element if you have the Warp Talents.")
     async def warp(self, ctx):
         """Command calls warp_element function to return random element."""
-        element = warp_element()
         logger.info(f"User {ctx.author} rolled warp element: {element}")
         await ctx.send(f"{ctx.author.mention}, your warp element is: **{element}**")
+        element = self.tracker.warp_element()
 
 
 def setup(bot):
     """Discord module required setup for Cog loading."""
     logger.info("Loading ChaosMageCommands cog")
-    bot.add_cog(ChaosMageCommands(bot))
+    bot.add_cog(ChaosMageCommands(bot, ChaosMageTracker()))
