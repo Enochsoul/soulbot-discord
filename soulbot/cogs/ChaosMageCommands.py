@@ -3,10 +3,8 @@
 import random
 
 import discord
+import loguru
 from discord.ext import commands
-from loguru import logger
-
-
 
 
 class ChaosMageTracker:
@@ -64,13 +62,15 @@ class ChaosMageTracker:
 
 
 # self.tracker = ChaosMageTracker()
+
+
 class ChaosMageCommands(discord.Cog, name="Chaos Mage Commands"):
     """Class definition for the Discord Cog controlling the Chaos Mage commands."""
 
     def __init__(self, bot, tracker: ChaosMageTracker):
         self.bot = bot
-        logger.info("ChaosMageCommands cog initialized")
         self.tracker = tracker
+        loguru.logger.info("ChaosMageCommands cog initialized")
 
     @commands.group(
         name="chaos",
@@ -81,26 +81,38 @@ class ChaosMageCommands(discord.Cog, name="Chaos Mage Commands"):
         """Command grouping all Chaos Mage commands.
         Returns error to the channel is command is incomplete."""
         if ctx.invoked_subcommand is None:
-            await ctx.send(f"Additional arguments required, see **{ctx.prefix}help chaos** for available options.")
+            await ctx.send(
+                f"Additional arguments required, see **{ctx.prefix}help chaos** for available options."
+            )
 
-    @chaos_main.command(help="Manually fills or refills a Chaos Mage's spell determination pool.")
+    @chaos_main.command(
+        help="Manually fills or refills a Chaos Mage's spell determination pool."
+    )
     async def refill(self, ctx):
         """Command to refill the enacting user's pool."""
         mage_key = str(ctx.guild.id) + ctx.author.display_name
-        logger.info(f"User {ctx.author} in guild {ctx.guild.name} refilled chaos mage pool")
-        await ctx.send(f"{ctx.author.mention}'s spell determination pool has been refilled.")
-
-    @chaos_main.command(help="Draw a random spell type from your spell determination pool.")
         self.tracker.refill(mage_key)
+        loguru.logger.info(
+            f"User {ctx.author} in guild {ctx.guild.name} refilled chaos mage pool"
+        )
+        await ctx.send(
+            f"{ctx.author.mention}'s spell determination pool has been refilled."
+        )
+
+    @chaos_main.command(
+        help="Draw a random spell type from your spell determination pool."
+    )
     async def draw(self, ctx):
         """Command to draw a spell type of the enacting user's pool."""
         mage_key = str(ctx.guild.id) + ctx.author.display_name
 
-        if mage_key in chaos_mages.mages:
-            if len(chaos_mages.mages[mage_key]) == 2:
-                logger.info(f"User {ctx.author} drew chaos spell (auto-refilled): {spell_type}")
+        if mage_key in self.tracker.mages:
+            if len(self.tracker.mages[mage_key]) == 2:
                 spell_type = self.tracker.draw(mage_key)
                 self.tracker.refill(mage_key)
+                loguru.logger.info(
+                    f"User {ctx.author} drew chaos spell (auto-refilled): {spell_type}"
+                )
                 await ctx.send(
                     f"{ctx.author.mention}, your next spell will be:"
                     f"\n{spell_type}\n"
@@ -108,26 +120,36 @@ class ChaosMageCommands(discord.Cog, name="Chaos Mage Commands"):
                     f"it has automatically been refilled."
                 )
             else:
-                logger.info(f"User {ctx.author} drew chaos spell: {spell_type}")
-                await ctx.send(f"{ctx.author.mention}, your next spell will be:\n{spell_type}")
                 spell_type = self.tracker.draw(mage_key)
+                loguru.logger.info(
+                    f"User {ctx.author} drew chaos spell: {spell_type}"
+                )
+                await ctx.send(
+                    f"{ctx.author.mention}, your next spell will be:\n{spell_type}"
+                )
         else:
-            logger.info(f"User {ctx.author} created new chaos mage pool and drew: {spell_type}")
             self.tracker.refill(mage_key)
             spell_type = self.tracker.draw(mage_key)
+            loguru.logger.info(
+                f"User {ctx.author} created new chaos mage pool and drew: {spell_type}"
+            )
             await ctx.send(
                 f"{ctx.author.mention}'s pool was empty and has been filled. Your next spell will be:\n{spell_type}"
             )
 
-    @chaos_main.command(help="Determine warp element if you have the Warp Talents.")
+    @chaos_main.command(
+        help="Determine warp element if you have the Warp Talents."
+    )
     async def warp(self, ctx):
         """Command calls warp_element function to return random element."""
-        logger.info(f"User {ctx.author} rolled warp element: {element}")
-        await ctx.send(f"{ctx.author.mention}, your warp element is: **{element}**")
         element = self.tracker.warp_element()
+        loguru.logger.info(f"User {ctx.author} rolled warp element: {element}")
+        await ctx.send(
+            f"{ctx.author.mention}, your warp element is: **{element}**"
+        )
 
 
 def setup(bot):
     """Discord module required setup for Cog loading."""
-    logger.info("Loading ChaosMageCommands cog")
+    loguru.logger.info("Loading ChaosMageCommands cog")
     bot.add_cog(ChaosMageCommands(bot, ChaosMageTracker()))
