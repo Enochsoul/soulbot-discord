@@ -2,10 +2,12 @@
 
 from typing import Any, Callable, Optional, Tuple
 
-import DiceRoller
+import dice_support
 import discord
 import tabulate
 from discord.ext import commands
+
+init_dice = dice_support.Dice()
 
 
 class InitiativeTrack:
@@ -62,7 +64,7 @@ def handle_init_roll_logic(
         return f"{player_name} is already in the initiative order."
 
     # Roll initiative and add to tracker
-    initiative_roll = DiceRoller.die_roll.roll("1d20").total
+    initiative_roll = init_dice.roll("1d20").total
     total_initiative = initiative_roll + init_bonus
 
     guild_tracker.combatant_dict[player_name] = total_initiative
@@ -211,7 +213,7 @@ def handle_npc_logic(
         return f"{npc_name} is already used in the initiative order.", None
 
     # Roll initiative
-    initiative_roll = DiceRoller.die_roll.roll("1d20").total
+    initiative_roll = init_dice.roll("1d20").total
     total_initiative = initiative_roll + init_bonus
 
     # Find and preserve the current active player
@@ -382,9 +384,7 @@ def handle_attack_logic(
         )
 
     # Roll the dice
-    attack_natural = DiceRoller.die_roll.roll(
-        valid_roll_types[roll_type]
-    ).total
+    attack_natural = init_dice.roll(valid_roll_types[roll_type]).total
     escalation = guild_tracker.escalation
     attack_modified = attack_natural + bonus + escalation
 
@@ -436,9 +436,7 @@ def handle_attack_npc_logic(
         )
 
     # Roll the dice
-    attack_natural = DiceRoller.die_roll.roll(
-        valid_roll_types[roll_type]
-    ).total
+    attack_natural = init_dice.roll(valid_roll_types[roll_type]).total
     attack_modified = attack_natural + bonus
 
     # Determine crit status
