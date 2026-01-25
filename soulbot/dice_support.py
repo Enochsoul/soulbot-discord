@@ -220,14 +220,14 @@ class Dice:
                     bold_result, sum(roll_result), "Exploding", modifier
                 )
 
-            case "ex":  # 10X System (placeholder for future implementation)
-                bold_result = [
-                    f"**{roll}**" if roll == die_size else str(roll)
-                    for roll in roll_result
-                ]
-                return RollResult(
-                    bold_result, sum(roll_result), "10x System", modifier
-                )
+            # case "ex":  # 10X System (placeholder for future implementation)
+            #     bold_result = [
+            #         f"**{roll}**" if roll == die_size else str(roll)
+            #         for roll in roll_result
+            #     ]
+            #     return RollResult(
+            #         bold_result, sum(roll_result), "10x System", modifier
+            #     )
 
             case "dl":  # Drop lowest roll.
                 lowest: int = min(roll_result)
