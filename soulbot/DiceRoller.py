@@ -9,8 +9,6 @@ import discord
 import loguru
 from discord.ext import commands
 
-# die_roll: Dice = Dice()
-
 
 def deck_embed_template(image_file: str) -> discord.Embed:
     """Card Draw embed template."""
