@@ -10,13 +10,6 @@ import loguru
 from discord.ext import commands
 
 
-def deck_embed_template(image_file: str) -> discord.Embed:
-    """Card Draw embed template."""
-    embed_template = discord.Embed(title="You drew:", color=0xFF0000)
-    embed_template.set_image(url=f"attachment://{image_file}")
-    return embed_template
-
-
 class DiceRoller(discord.Cog, name="Dice Roller"):
     """Class definition for DiceRoller Cog."""
 
@@ -33,6 +26,13 @@ class DiceRoller(discord.Cog, name="Dice Roller"):
         }
         self.deck_list: List[str] = os.listdir("./data/decks")
         loguru.logger.info("DiceRoller cog initialized")
+
+    @staticmethod
+    def deck_embed_template(image_file: str) -> discord.Embed:
+        """Card Draw embed template."""
+        embed_template = discord.Embed(title="You drew:", color=0xFF0000)
+        embed_template.set_image(url=f"attachment://{image_file}")
+        return embed_template
 
     @commands.command(
         help="Dice roller.  Expected format: NdN+N.(Ex: 2d6+2)\nRoll Types: \n\td=Default\n\tad=Advantage\n\tdd=Disadvantage\n\ted=Exploding Dice\n\tdl=Drop Lowest Die\n\tdh=Drop Highest Die"
@@ -109,7 +109,7 @@ class DiceRoller(discord.Cog, name="Dice Roller"):
                 file: discord.File = discord.File(
                     f"./data/decks/{self.active_deck[ctx.guild.id]}/{file_name}"
                 )
-                embed: discord.Embed = deck_embed_template(file_name)
+                embed: discord.Embed = self.deck_embed_template(file_name)
                 loguru.logger.info(
                     f"User {ctx.author} drew card {file_name} from deck {self.active_deck[ctx.guild.id]}"
                 )
