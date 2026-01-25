@@ -1,7 +1,7 @@
 {
   "discord_token": "",
   "command_prefix": "!",
-  "load_cogs": [],
+  "load_cogs": ["NextGameScheduler", "Quotes", "InitiativeTracker", "ChaosMageCommands"],
   "next_game_time": "15:00 MT",
   "next_game_interval": "14",
   "announce_channel": "general"
