@@ -3,8 +3,6 @@
 .zed/
 .ropeproject/
 
-uv.lock
-
 *.pyc
 __pycache__/
 instance/
