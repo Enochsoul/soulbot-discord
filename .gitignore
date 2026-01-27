@@ -1,4 +1,9 @@
-venv/
+.idea/
+.vscode/
+.zed/
+.ropeproject/
+
+uv.lock
 
 *.pyc
 __pycache__/
@@ -9,11 +14,8 @@ htmlcov/
 dist/
 build/
 .egg-ingo
-.idea/
-.vscode/
-.zed/
-.ropeproject/
-data/*
-!data/decks
 
+soulbot/data/*
+!data/decks
+soulbot/logs/*
 *.conf

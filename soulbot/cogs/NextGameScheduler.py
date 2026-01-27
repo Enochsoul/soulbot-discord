@@ -1,0 +1,329 @@
+"""Cog containing commands for controlling game schedule tracker."""
+
+import arrow
+import discord
+import loguru
+import soulbot_support
+from discord.ext import commands
+
+
+def next_game_embed_template(input_date):
+    """Discord embed template generator for Next Game announcements.
+
+    :return: embed object.
+    :param input_date: Input date in soulbot_support.UTC.
+    """
+    time_until = input_date - arrow.now(soulbot_support.UTC)
+    days = time_until.days
+    hours, remainder = divmod(time_until.seconds, 3600)
+    minutes, _ = divmod(remainder, 60)
+    output_embed = discord.Embed(
+        title="__**Next Scheduled Game**__",
+        description=f"Time until next game: {days} Days, {hours} Hours, {minutes} Minutes",
+    )
+    output_embed.add_field(
+        name="__Eastern Time__",
+        value=f"{input_date.to(soulbot_support.ET).strftime('%d/%m/%Y %H:%M')}",
+        inline=False,
+    )
+    output_embed.add_field(
+        name="__Mountain Time__",
+        value=f"{input_date.to(soulbot_support.MT).strftime('%d/%m/%Y %H:%M')}",
+        inline=False,
+    )
+    output_embed.add_field(
+        name="__Pacific Time__",
+        value=f"{input_date.to(soulbot_support.PT).strftime('%d/%m/%Y %H:%M')}",
+        inline=False,
+    )
+    return output_embed
+
+
+class NextGameScheduler(discord.Cog, name="Next Game Scheduler"):
+    """Class definition for Next Game Scheduler Cog, inherits from discord extension Cog class."""
+
+    def __init__(self, bot):
+        self.bot = bot
+        self.timezones = {
+            "ET": soulbot_support.ET,
+            "CT": soulbot_support.CT,
+            "MT": soulbot_support.MT,
+            "PT": soulbot_support.PT,
+        }
+        loguru.logger.info("NextGameScheduler cog initialized")
+
+    @commands.group(name="next", help="Prints out the date of the next game.")
+    async def next_game(self, ctx):
+        """Base level cog group command."""
+        if ctx.invoked_subcommand is None:
+            next_game_scheduled = (
+                soulbot_support.soulbot_db.next_game_db_get_date(ctx.guild.id)
+            )
+            if not next_game_scheduled:
+                loguru.logger.info(
+                    f"User {ctx.author} requested next game but none scheduled in {ctx.guild.name}"
+                )
+                await ctx.send("The next game hasn't been scheduled yet.")
+            else:
+                next_game_embed = next_game_embed_template(
+                    arrow.get(next_game_scheduled)
+                )
+                loguru.logger.info(
+                    f"User {ctx.author} requested next game info in {ctx.guild.name}"
+                )
+                await ctx.send(embed=next_game_embed)
+
+    @next_game.group(help="Commands to schedule when the next game is.")
+    async def schedule(self, ctx):
+        """Schedule sub-command group."""
+        if ctx.invoked_subcommand is None:
+            await ctx.send(
+                f"Additional arguments required, see **{ctx.prefix}help next schedule** for available options."
+            )
+
+    @schedule.command(
+        help="Sets the default date/time for the next game. Same bat time, 14 days from today."
+    )
+    async def default(self, ctx):
+        """Schedule command to set the default next game time/date.
+        Default: 13:00MT 14 days from date command is run.
+        """
+
+        guild_config = soulbot_support.soulbot_db.config_get_guild(
+            ctx.guild.id
+        )
+        if not guild_config:
+            loguru.logger.error(f"Error with guild config for {ctx.guild.id}.")
+            await ctx.send(
+                "There was an error fetching the guild config, please check the logs."
+            )
+            return
+        def_time, def_tz = guild_config.next_game_start.split()
+        def_hour, def_minute = [int(i) for i in def_time.split(":")]
+        def_timezone = self.timezones[def_tz.upper()]
+        default_date = (
+            arrow.now(def_timezone)
+            .replace(hour=def_hour, minute=def_minute, second=0, microsecond=0)
+            .shift(days=guild_config.next_game_interval)
+        )
+        soulbot_support.soulbot_db.next_game_db_add(
+            default_date.to(soulbot_support.UTC).int_timestamp, ctx.guild.id
+        )
+        next_game_embed = next_game_embed_template(
+            default_date.to(soulbot_support.UTC)
+        )
+        loguru.logger.info(
+            f"User {ctx.author} set default next game schedule in {ctx.guild.name}: {default_date}"
+        )
+        await ctx.send(embed=next_game_embed)
+
+    @schedule.command(
+        name="date",
+        help="Sets the date of the next game, assumes default start time of 1300MT/1500ET. Format=DD/MM/YYYY",
+    )
+    async def set_date(self, ctx, schedule_date: str = ""):
+        """Schedule command to set a specific date for the next game, at the default time.
+        Default time: 13:00 MT
+
+        :param schedule_date: Date string
+        :param ctx: Discord context object
+        """
+        try:
+            sch_day, sch_month, sch_year = [
+                int(i) for i in schedule_date.split("/")
+            ]
+            now = arrow.now()
+            if not schedule_date:
+                await ctx.send(
+                    "Please use the format: DD/MM/YYYY(EG: 31/05/2020)"
+                )
+            elif (
+                (sch_day > 31)
+                or (sch_month > 12)
+                or (now.year != sch_year != now.year + 1)
+            ):
+                loguru.logger.warning(
+                    f"User {ctx.author} provided invalid date format: {schedule_date}"
+                )
+                await ctx.send(
+                    "Please use the format: DD/MM/YYYY(EG: 31/05/2020)"
+                )
+            else:
+                guild_config = soulbot_support.soulbot_db.config_get_guild(
+                    ctx.guild.id
+                )
+                if not guild_config:
+                    loguru.logger.error(
+                        f"Error with guild config for {ctx.guild.id}."
+                    )
+                    await ctx.send(
+                        "There was an error fetching the guild config, please check the logs."
+                    )
+                    return
+                def_time, def_tz = guild_config.next_game_start.split()
+                def_hour, def_minute = [int(i) for i in def_time.split(":")]
+                def_timezone = self.timezones[def_tz.upper()]
+                output_date = arrow.Arrow(
+                    sch_year,
+                    sch_month,
+                    sch_day,
+                    def_hour,
+                    def_minute,
+                    0,
+                    0,
+                    def_timezone,
+                )
+                soulbot_support.soulbot_db.next_game_db_add(
+                    output_date.to(soulbot_support.UTC).int_timestamp,
+                    ctx.guild.id,
+                )
+                next_game_embed = next_game_embed_template(
+                    output_date.to(soulbot_support.UTC)
+                )
+                loguru.logger.info(
+                    f"User {ctx.author} set next game date in {ctx.guild.name}: {output_date}"
+                )
+                await ctx.send(
+                    f"Set next game date to {sch_day}/{sch_month}/{sch_year}"
+                    f" at the default time.\nUse the **{ctx.prefix}next schedule time** "
+                    f"command if you want to change the time.\nAnnouncements are off.",
+                    embed=next_game_embed,
+                )
+        except ValueError:
+            loguru.logger.warning(
+                f"User {ctx.author} provided invalid date format: {schedule_date}"
+            )
+            await ctx.send("Please use the format: DD/MM/YYYY(EG: 31/05/2020)")
+
+    @schedule.command(
+        name="time",
+        help="Changes the time of the scheduled next game, in 24 hour time with timezone.  Format=HH:MM TZ",
+    )
+    async def set_time(self, ctx, schedule_time: str, schedule_tz: str):
+        """Schedule command to change the time of the currently scheduled game.
+
+        :param schedule_time: Time string
+        :param schedule_tz: Timezone string
+        :param ctx: Discord context object
+        """
+        try:
+            sch_hour, sch_minute = [int(i) for i in schedule_time.split(":")]
+            if (sch_hour > 24) or (sch_minute > 59):
+                await ctx.send(
+                    "Please use 24 hour time in the format: HH:MM TZ(Eg: 19:00 ET)"
+                )
+            elif schedule_tz.upper() not in [
+                "ET",
+                "soulbot_support.CT",
+                "MT",
+                "PT",
+            ]:
+                loguru.logger.warning(
+                    f"User {ctx.author} provided invalid timezone: {schedule_tz}"
+                )
+                await ctx.send(
+                    "Please indicate your timezone, ET, soulbot_support.CT, MT, or PT."
+                )
+            else:
+                time_zone = self.timezones[schedule_tz.upper()]
+                next_game_scheduled = arrow.get(
+                    soulbot_support.soulbot_db.next_game_db_get_date(
+                        ctx.guild.id
+                    )
+                )
+                output_date = next_game_scheduled.to(time_zone).replace(
+                    hour=sch_hour, minute=sch_minute, microsecond=0, second=0
+                )
+                soulbot_support.soulbot_db.next_game_db_add(
+                    output_date.to(soulbot_support.UTC).int_timestamp,
+                    ctx.guild.id,
+                )
+                next_game_embed = next_game_embed_template(
+                    output_date.to(soulbot_support.UTC)
+                )
+                loguru.logger.info(
+                    f"User {ctx.author} changed next game time in {ctx.guild.name}: {output_date}"
+                )
+                await ctx.send(
+                    "Next game time successfully set.\nAnnouncements are off.",
+                    embed=next_game_embed,
+                )
+        except ValueError:
+            loguru.logger.warning(
+                f"User {ctx.author} provided invalid time format: {schedule_time}"
+            )
+            await ctx.send(
+                "Please use 24 hour time in the format: HH:MM TZ(Eg: 19:00 ET)"
+            )
+        except TypeError:
+            loguru.logger.error(
+                f"User {ctx.author} tried to set time with no date set."
+            )
+            await ctx.send(
+                f"No game date set, please use {ctx.prefix}next schedule date or {ctx.prefix}next default to set the date first."
+            )
+        except RuntimeError as e:
+            loguru.logger.error(str(e))
+            await ctx.send(str(e))
+
+    @next_game.command(
+        help="Toggles next game announcements.  Options are 'on' or 'off."
+    )
+    async def announce(self, ctx, toggle: str = ""):
+        """Command to toggle the Next Game announcements in the general channel.
+
+        :param toggle: 'On' or 'Off' string
+        :param ctx: Discord context object
+        """
+        announce_state = soulbot_support.soulbot_db.next_game_db_get_announce(
+            ctx.guild.id
+        )
+        state = "active" if announce_state else "not active"
+        if not toggle:
+            loguru.logger.info(
+                f"User {ctx.author} checked announcement status in {ctx.guild.name}: {announce_state}"
+            )
+            await ctx.send(f"Game announcements are {state}.")
+        elif toggle.lower() == "off":
+            soulbot_support.soulbot_db.next_game_announce_toggle(
+                False, ctx.guild.id
+            )
+            loguru.logger.info(
+                f"User {ctx.author} disabled game announcements in {ctx.guild.name}"
+            )
+            await ctx.send("Disabling next game announcements.")
+        elif toggle.lower() == "on":
+            soulbot_support.soulbot_db.next_game_announce_toggle(
+                True, ctx.guild.id
+            )
+            loguru.logger.info(
+                f"User {ctx.author} enabled game announcements in {ctx.guild.name}"
+            )
+            await ctx.send("Enabling next game announcements.")
+        else:
+            await ctx.send(
+                "Please specify 'on' or 'off' to toggle game announcements."
+            )
+
+    @set_date.error
+    @set_time.error
+    async def next_game_error(
+        self, ctx: commands.Context, error: commands.CommandError
+    ):
+        """Error catching for the cog."""
+        if isinstance(error, commands.MissingRequiredArgument):
+            loguru.logger.warning(
+                f"Missing required argument in {ctx.command}: {error}"
+            )
+            await ctx.send(
+                "Please use 24 hour time in the format: HH:MM TZ(Eg: 19:00 ET)"
+            )
+        else:
+            loguru.logger.error(f"NextGameScheduler command error: {error}")
+            await ctx.send(f"Experienced the following error:\n{error}")
+
+
+def setup(bot):
+    """Discord module required setup for Cog loading."""
+    loguru.logger.info("Loading NextGameScheduler cog")
+    bot.add_cog(NextGameScheduler(bot))
